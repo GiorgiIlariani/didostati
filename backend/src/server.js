@@ -16,8 +16,11 @@ const app = express();
 connectDB();
 
 // Middleware - CORS, parsing, logging, rate limiting
+const corsOrigin = process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL
+  : true;
 app.use(cors({
-  origin: true, // TODO: tighten this in production to specific frontend origins
+  origin: corsOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']

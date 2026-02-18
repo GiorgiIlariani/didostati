@@ -69,11 +69,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
   };
 
   return (
-    <div className="group bg-slate-800 rounded-lg sm:rounded-xl overflow-hidden border border-slate-700 hover:border-orange-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10">
+    <div className="group bg-slate-800 rounded-lg sm:rounded-xl overflow-hidden border border-slate-700 hover:border-orange-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10 h-full flex flex-col">
       {/* Image: shorter on mobile so more products fit above the fold */}
       <Link
         href={`/products/${product._id}`}
-        className="relative block aspect-4/3 sm:aspect-square overflow-hidden bg-slate-900">
+        className="relative block aspect-4/3 overflow-hidden bg-slate-900">
         <Image
           src={
             product.images[0]?.url ||
@@ -126,56 +126,25 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </button>
       </Link>
 
-      {/* Content - minimal on mobile */}
-      <div className="p-2 sm:p-4">
+      {/* Content - minimal on mobile, tighter on desktop */}
+      <div className="p-2 sm:p-3 lg:p-4 flex flex-col flex-1">
         {/* Brand - tiny on mobile */}
         <p className="text-[10px] sm:text-xs text-slate-400 mb-0.5 sm:mb-1 truncate">
           {product.brand}
         </p>
 
-        {/* Name - one line on mobile */}
+        {/* Name - one line on mobile, compact on desktop */}
         <Link href={`/products/${product._id}`}>
-          <h3 className="text-xs sm:text-base font-semibold text-slate-100 mb-1 sm:mb-2 line-clamp-1 sm:line-clamp-2 hover:text-orange-400 transition-colors">
+          <h3 className="text-xs sm:text-sm md:text-base font-semibold text-slate-100 mb-1 sm:mb-1.5 md:mb-2 line-clamp-1 sm:line-clamp-2 hover:text-orange-400 transition-colors">
             {product.name}
           </h3>
         </Link>
 
-        {/* Rating - hidden on mobile to save space */}
-        {product.rating !== undefined && product.rating > 0 && (
-          <div className="hidden sm:flex items-center gap-1 mb-2">
-            <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-            <span className="text-slate-300 text-sm font-semibold">
-              {product.rating.toFixed(1)}
-            </span>
-            {product.reviewsCount !== undefined && (
-              <span className="text-slate-500 text-xs">
-                ({product.reviewsCount} შეფასება)
-              </span>
-            )}
-          </div>
-        )}
+        {/* Rating + social proof removed on list cards to make height smaller */}
 
-        {/* Social proof - hidden on mobile */}
-        <div className="hidden sm:flex items-center gap-3 mb-3 text-xs text-slate-400">
-          {product.viewCount !== undefined && product.viewCount > 0 && (
-            <div className="flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              <span>{product.viewCount.toLocaleString()} ნახვა</span>
-            </div>
-          )}
-          {product.soldCount !== undefined && product.soldCount > 0 && (
-            <div className="flex items-center gap-1 text-emerald-400">
-              <TrendingUp className="w-3 h-3" />
-              <span className="font-semibold">
-                {product.soldCount} გაყიდული დღეს
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Price - compact on mobile */}
-        <div className="flex items-baseline gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
-          <span className="text-sm sm:text-xl font-bold text-orange-400">
+        {/* Price - compact on mobile and desktop */}
+        <div className="flex items-baseline gap-1.5 sm:gap-2 mb-1.5 sm:mb-2.5 lg:mb-3">
+          <span className="text-sm sm:text-lg md:text-xl font-bold text-orange-400">
             ₾{product.price.toFixed(2)}
           </span>
           {product.originalPrice && (
@@ -185,11 +154,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
           )}
         </div>
 
-        {/* Add to cart - short on mobile */}
+        {/* Add to cart - pinned to bottom */}
         <button
           onClick={handleAddToCart}
           disabled={!product.inStock || justAdded}
-          className="w-full py-2 sm:py-4 px-2 sm:px-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white text-xs sm:text-base font-semibold rounded-md sm:rounded-lg hover:from-orange-600 hover:to-yellow-600 active:from-orange-700 active:to-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md touch-manipulation min-h-[40px] sm:min-h-[52px] flex items-center justify-center gap-1.5 sm:gap-2">
+          className="mt-auto w-full py-2 sm:py-3 md:py-4 px-2 sm:px-3 md:px-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white text-xs sm:text-sm md:text-base font-semibold rounded-md sm:rounded-lg hover:from-orange-600 hover:to-yellow-600 active:from-orange-700 active:to-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md touch-manipulation min-h-[40px] sm:min-h-[46px] md:min-h-[52px] flex items-center justify-center gap-1.5 sm:gap-2">
           {justAdded ? (
             <>
               <Check className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
