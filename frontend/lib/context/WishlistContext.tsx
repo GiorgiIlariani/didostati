@@ -114,7 +114,14 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
     try {
       const res = await wishlistAPI.toggle(productId);
       if (res?.status === "success" && Array.isArray(res.data.wishlistIds)) {
-        setWishlistIds([...new Set(res.data.wishlistIds.map((id: any) => String(id)))]);
+        const normalizedIds = Array.from(
+          new Set(
+            (res.data.wishlistIds as Array<string | number>).map((id) =>
+              String(id),
+            ),
+          ),
+        );
+        setWishlistIds(normalizedIds);
       }
     } catch (error) {
       // Revert on error

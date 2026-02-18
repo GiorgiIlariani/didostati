@@ -12,7 +12,7 @@
  * Uses useProducts() hook so API logic stays centralized.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProducts } from "@/lib/hooks/useProducts";
 import { usePagination } from "@/lib/hooks/usePagination";
@@ -29,7 +29,7 @@ interface Category {
   isSubcategory?: boolean;
 }
 
-export default function ProductsPage() {
+function ProductsPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialQuery = searchParams.get("q") || "";
@@ -524,5 +524,18 @@ export default function ProductsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="inline-block w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }>
+      <ProductsPageInner />
+    </Suspense>
   );
 }
