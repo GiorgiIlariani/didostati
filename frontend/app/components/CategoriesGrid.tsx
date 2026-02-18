@@ -26,7 +26,9 @@ const CategoriesGrid = () => {
         setLoading(true);
         const response = await categoryAPI.getAll();
         if (response.status === 'success') {
-          setCategories(response.data.categories);
+          // Show only top-level categories on home (subcategories in products page filter)
+          const all = response.data.categories || [];
+          setCategories(all.filter((c: any) => !c.parent || !c.isSubcategory));
         }
       } catch (err: any) {
         setError(err.message);

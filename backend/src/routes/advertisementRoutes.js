@@ -2,9 +2,13 @@ const express = require('express');
 const router = express.Router();
 const advertisementController = require('../controllers/advertisementController');
 const { protect, restrictTo } = require('../middleware/authMiddleware');
+const { upload } = require('../middleware/uploadMiddleware');
 
 // Get all advertisements (optionally filter by position)
 router.get('/', advertisementController.getAllAdvertisements);
+
+// Upload media (image/video) - must be before /:id
+router.post('/upload', protect, restrictTo('admin'), upload.single('media'), advertisementController.uploadAdvertisementMedia);
 
 // Get single advertisement
 router.get('/:id', advertisementController.getAdvertisementById);

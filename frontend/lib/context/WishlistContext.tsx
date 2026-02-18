@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { wishlistAPI } from "../api";
 import { useAuth } from "./AuthContext";
 
@@ -12,7 +18,9 @@ interface WishlistContextType {
   loading: boolean;
 }
 
-const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
+const WishlistContext = createContext<WishlistContextType | undefined>(
+  undefined,
+);
 
 export const useWishlist = () => {
   const context = useContext(WishlistContext);
@@ -27,21 +35,21 @@ const GUEST_WISHLIST_KEY = "didostati_wishlist_guest";
 export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Load wishlist on mount and whenever auth user changes
   useEffect(() => {
     let cancelled = false;
+    setLoading(true); // synchronous: avoid showing stale count for one frame when user changes
 
     async function load() {
-      setLoading(true);
       try {
         if (user) {
           // Logged in: load from backend
           const res = await wishlistAPI.get();
           if (!cancelled && res?.status === "success") {
             const ids: string[] = res.data.ids || [];
-            setWishlistIds(ids.map((id: any) => String(id)));
+            setWishlistIds([...new Set(ids.map((id: any) => String(id)))]);
           }
         } else {
           // Guest: load from localStorage
@@ -51,7 +59,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
               try {
                 const parsed = JSON.parse(saved) as string[];
                 if (Array.isArray(parsed)) {
-                  setWishlistIds(parsed);
+                  setWishlistIds([...new Set(parsed)]);
                 } else {
                   setWishlistIds([]);
                 }
@@ -100,20 +108,20 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
     setWishlistIds((prev) =>
       prev.includes(productId)
         ? prev.filter((id) => id !== productId)
-        : [...prev, productId]
+        : [...prev, productId],
     );
 
     try {
       const res = await wishlistAPI.toggle(productId);
       if (res?.status === "success" && Array.isArray(res.data.wishlistIds)) {
-        setWishlistIds(res.data.wishlistIds.map((id: any) => String(id)));
+        setWishlistIds([...new Set(res.data.wishlistIds.map((id: any) => String(id)))]);
       }
     } catch (error) {
       // Revert on error
       setWishlistIds((prev) =>
         prev.includes(productId)
           ? prev.filter((id) => id !== productId)
-          : [...prev, productId]
+          : [...prev, productId],
       );
       console.error("Failed to toggle wishlist:", error);
     }
@@ -136,10 +144,8 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
         isInWishlist,
         clearWishlist,
         loading,
-      }}
-    >
+      }}>
       {children}
     </WishlistContext.Provider>
   );
 };
-

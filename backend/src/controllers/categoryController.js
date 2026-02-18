@@ -1,10 +1,12 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 
-// Get all categories
+// Get all categories (flat list with parent populated for multi-level display)
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find({ isActive: true }).sort('name');
+    const categories = await Category.find({ isActive: true })
+      .populate('parent', 'name slug')
+      .sort({ parent: 1, name: 1 });
 
     // Get product count for each category
     const categoriesWithCount = await Promise.all(
@@ -13,10 +15,11 @@ exports.getAllCategories = async (req, res) => {
           category: category._id,
           isActive: true
         });
-        
+        const obj = category.toObject();
         return {
-          ...category.toObject(),
-          productCount
+          ...obj,
+          productCount,
+          isSubcategory: !!obj.parent
         };
       })
     );

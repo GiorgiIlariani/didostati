@@ -1,4 +1,28 @@
 const Advertisement = require('../models/Advertisement');
+const path = require('path');
+
+// Upload media (image/video) for advertisements – returns public URL
+exports.uploadMedia = async (req, res) => {
+  try {
+    if (!req.file || !req.file.filename) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No file uploaded'
+      });
+    }
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const url = `${baseUrl}/uploads/advertisements/${req.file.filename}`;
+    res.status(200).json({
+      status: 'success',
+      data: { url }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
 
 // Get all active advertisements
 exports.getAllAdvertisements = async (req, res) => {
@@ -55,6 +79,22 @@ exports.getAdvertisementById = async (req, res) => {
       message: error.message
     });
   }
+};
+
+// Upload media for advertisement (image or video)
+exports.uploadAdvertisementMedia = (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'No file uploaded. Use field name "media".'
+    });
+  }
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const url = `${baseUrl}/uploads/advertisements/${req.file.filename}`;
+  res.status(200).json({
+    status: 'success',
+    data: { url }
+  });
 };
 
 // Create advertisement

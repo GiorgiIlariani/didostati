@@ -50,7 +50,10 @@ export const productAPI = {
     minPrice?: number;
     maxPrice?: number;
     inStock?: boolean;
+    size?: string;
+    purpose?: string;
     sort?: string;
+    q?: string;
   }) => {
     const queryParams = new URLSearchParams();
     if (params) {
@@ -84,9 +87,46 @@ export const productAPI = {
     return apiRequest(`/products/search?${params.toString()}`);
   },
 
+  // Get filter options (sizes, purposes)
+  getFilterOptions: async () => {
+    return apiRequest('/products/filters/options');
+  },
+
   // Get single product
   getById: async (id: string) => {
     return apiRequest(`/products/${id}`);
+  },
+
+  // Get product by id; returns null on 404 without logging (e.g. for recently viewed with stale ids)
+  getByIdOptional: async (id: string): Promise<{ status: string; data: { product: any } } | null> => {
+    const url = `${API_URL}/products/${id}`;
+    const token = getStoredToken();
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    try {
+      const response = await fetch(url, { headers });
+      const data = await response.json();
+      if (response.status === 404) return null;
+      if (!response.ok) throw new Error(data.message || 'API request failed');
+      return data;
+    } catch {
+      return null;
+    }
+  },
+
+  // Upload product image (admin) – multipart form, field name "image"
+  uploadImage: async (file: File | Blob, filename?: string): Promise<{ url: string }> => {
+    const url = `${API_URL}/products/upload-image`;
+    const token = getStoredToken();
+    const formData = new FormData();
+    const name = filename || (file instanceof File ? file.name : 'image.png');
+    formData.append('image', file, name);
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(url, { method: 'POST', body: formData, headers });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Upload failed');
+    return data.data;
   },
 
   // Create product (admin)
@@ -110,6 +150,11 @@ export const productAPI = {
     return apiRequest(`/products/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  // Get all products for admin (includes inactive)
+  getAdminAll: async () => {
+    return apiRequest('/products/admin/all');
   },
 };
 
@@ -155,6 +200,7 @@ export const orderAPI = {
     };
     paymentMethod: 'cash' | 'card' | 'bank_transfer';
     deliveryFee?: number;
+    deliveryType?: 'standard' | 'express' | 'pickup';
     phone?: string;
     customer?: {
       name?: string;
@@ -228,6 +274,20 @@ export const advertisementAPI = {
     return apiRequest(`/advertisements/${id}`);
   },
 
+  // Upload media (image/video) for advertisement – returns { data: { url } }
+  uploadMedia: async (file: File) => {
+    const url = `${API_URL}/advertisements/upload`;
+    const token = getStoredToken();
+    const headers: HeadersInit = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const formData = new FormData();
+    formData.append('media', file);
+    const response = await fetch(url, { method: 'POST', headers, body: formData });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Upload failed');
+    return data;
+  },
+
   // Create advertisement (admin)
   create: async (adData: any) => {
     return apiRequest('/advertisements', {
@@ -284,6 +344,7 @@ export const supportAPI = {
     email?: string;
     message: string;
     productId?: string;
+    requestType?: 'general' | 'consultation' | 'technical';
   }) => {
     return apiRequest('/support', {
       method: 'POST',

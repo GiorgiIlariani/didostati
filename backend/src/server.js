@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
@@ -24,6 +25,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+
+// Serve uploaded files (advertisement media, etc.)
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Global API rate limiter
 app.use('/api', apiLimiter);

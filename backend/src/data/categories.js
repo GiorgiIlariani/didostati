@@ -1,5 +1,6 @@
-// Categories – image filenames match your files in frontend/public/assets/images/
+// Categories – top-level and subcategories (parentSlug used in seed to set parent)
 const categories = [
+  // Top-level
   {
     name: 'ხის მასალები',
     slug: 'khis-masalebi',
@@ -41,6 +42,31 @@ const categories = [
     description: 'ელექტრო და ხელის ინსტრუმენტები პროფესიონალური და საყოფაცხოვრებო გამოყენებისთვის. ბურღები, ხერხები, გასაღებები, კომპლექტები და აქსესუარები — ეფექტური მუშაობა და ზუსტი შედეგი თითოეულ ეტაპზე.',
     image: '/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg',
     isActive: true
+  },
+  // Subcategories (product types under parent)
+  {
+    name: 'ელექტრო ინსტრუმენტები',
+    slug: 'elektro-instrumentebi',
+    description: 'ელექტრო ბურღები, ხერხები, საფრეჭები და სხვა ხელსაწყოები.',
+    image: '/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg',
+    isActive: true,
+    parentSlug: 'instrumentebi-samushao-khelsatsqoebi'
+  },
+  {
+    name: 'ხელის ინსტრუმენტები',
+    slug: 'khelis-instrumentebi',
+    description: 'ხელის ინსტრუმენტები და კომპლექტები.',
+    image: '/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg',
+    isActive: true,
+    parentSlug: 'instrumentebi-samushao-khelsatsqoebi'
+  },
+  {
+    name: 'ხის ფილები და ფანერა',
+    slug: 'khis-filebi-fanera',
+    description: 'ფანერა, OSB, ხის ფილები.',
+    image: '/assets/images/khis-masalebi.jpeg',
+    isActive: true,
+    parentSlug: 'khis-masalebi'
   }
 ];
 

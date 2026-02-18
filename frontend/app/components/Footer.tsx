@@ -7,7 +7,7 @@ const Footer = () => {
     <footer className="bg-slate-950 border-t border-slate-800">
       {/* Main Footer */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12">
           
           {/* Company Info */}
           <div className="space-y-4">
@@ -55,6 +55,43 @@ const Footer = () => {
               <li>
                 <Link href="/contact" className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
                   კონტაქტი
+                </Link>
+              </li>
+              <li>
+                <Link href="/support" className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
+                  მხარდაჭერა
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Content / კონტენტი */}
+          <div>
+            <h3 className="text-white font-semibold text-lg mb-4">კონტენტი</h3>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/blog" className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
+                  ბლოგი და რჩევები
+                </Link>
+              </li>
+              <li>
+                <Link href="/compare" className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
+                  შედარებითი სტატიები
+                </Link>
+              </li>
+              <li>
+                <Link href="/videos" className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
+                  ვიდეო გაკვეთილები
+                </Link>
+              </li>
+              <li>
+                <Link href="/tests" className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
+                  პროდუქტის ტესტები
+                </Link>
+              </li>
+              <li>
+                <Link href="/how-to-choose" className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
+                  როგორ შევარჩიო სწორად?
                 </Link>
               </li>
             </ul>

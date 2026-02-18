@@ -4,7 +4,7 @@ const Notification = require('../models/Notification');
 // Create a new support/consultation request
 exports.createSupportRequest = async (req, res) => {
   try {
-    const { name, phone, email, message, productId } = req.body;
+    const { name, phone, email, message, productId, requestType } = req.body;
 
     if (!name || !phone || !message) {
       return res.status(400).json({
@@ -22,6 +22,9 @@ exports.createSupportRequest = async (req, res) => {
 
     if (productId) {
       payload.product = productId;
+    }
+    if (['general', 'consultation', 'technical'].includes(requestType)) {
+      payload.requestType = requestType;
     }
 
     if (req.user) {

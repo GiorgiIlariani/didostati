@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Trash2, Plus, Video, Image as ImageIcon } from 'lucide-react';
+import { advertisementAPI } from '@/lib/api';
 
 interface Advertisement {
   _id: string;
@@ -26,8 +27,7 @@ export default function ManageAdvertisementsPage() {
 
   const fetchAds = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/advertisements');
-      const data = await response.json();
+      const data = await advertisementAPI.getAll();
       if (data.status === 'success') {
         setAds(data.data.advertisements);
       }
@@ -44,11 +44,7 @@ export default function ManageAdvertisementsPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5001/api/advertisements/${id}`, {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-      
+      const data = await advertisementAPI.delete(id);
       if (data.status === 'success') {
         alert('Advertisement deleted successfully!');
         fetchAds(); // Refresh list
@@ -56,7 +52,7 @@ export default function ManageAdvertisementsPage() {
         alert('Error: ' + data.message);
       }
     } catch (error: any) {
-      alert('Error deleting advertisement: ' + error.message);
+      alert('Error deleting advertisement: ' + (error.message || 'Unknown error'));
     }
   };
 

@@ -1,11 +1,16 @@
 "use client";
 
 import Link from 'next/link';
-import { Plus, Video, List, Package, MessageSquare } from 'lucide-react';
+import { Plus, Video, List, Package, MessageSquare, ShoppingBag } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 const AdminNav = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+
+  if (authLoading) return null;
+  if (!user || user.role !== 'admin') return null;
 
   return (
     <>
@@ -24,6 +29,14 @@ const AdminNav = () => {
           <div className="p-4">
             <h3 className="text-slate-300 font-bold mb-3 text-sm uppercase tracking-wider">Admin Panel</h3>
             <div className="space-y-2">
+              <Link
+                href="/admin/products"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]"
+              >
+                <ShoppingBag className="w-5 h-5 text-orange-400" />
+                <span className="font-medium">Manage Products</span>
+              </Link>
               <Link
                 href="/admin/products/add"
                 onClick={() => setIsOpen(false)}

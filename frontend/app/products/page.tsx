@@ -15,14 +15,18 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useProducts } from "@/lib/hooks/useProducts";
-import { categoryAPI } from "@/lib/api";
+import { usePagination } from "@/lib/hooks/usePagination";
+import { categoryAPI, productAPI } from "@/lib/api";
 import ProductCard from "../components/ProductCard";
+import PaginationBar from "../components/PaginationBar";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 
 interface Category {
   _id: string;
   name: string;
   slug: string;
+  parent?: { _id: string; name: string; slug: string } | null;
+  isSubcategory?: boolean;
 }
 
 export default function ProductsPage() {
@@ -31,7 +35,13 @@ export default function ProductsPage() {
   const initialQuery = searchParams.get("q") || "";
   const initialCategory = searchParams.get("category") || "";
 
+  const PRODUCTS_PER_PAGE = 12;
+
   const [categories, setCategories] = useState<Category[]>([]);
+  const [filterOptions, setFilterOptions] = useState<{
+    sizes: string[];
+    purposes: string[];
+  }>({ sizes: [], purposes: [] });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -39,9 +49,17 @@ export default function ProductsPage() {
   const [selectedBrand, setSelectedBrand] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedPurpose, setSelectedPurpose] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Sync search query from URL when navigating
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    setSearchQuery(q);
+  }, [searchParams]);
 
   const pricePresets = [
     { label: "₾0 - ₾50", min: 0, max: 50 },
@@ -50,14 +68,40 @@ export default function ProductsPage() {
     { label: "₾200+", min: 200, max: undefined as number | undefined },
   ];
 
-  // Fetch products and categories
-  const { products, loading, error } = useProducts({
+  const pageFromUrl = parseInt(searchParams.get("page") || "1", 10) || 1;
+
+  // Fetch products: server-side search when query present, else filtered list
+  const {
+    products,
+    loading,
+    error,
+    pagination: productsPagination,
+  } = useProducts({
+    search: searchQuery.trim() || undefined,
+    page: searchQuery.trim() ? undefined : pageFromUrl,
+    limit: PRODUCTS_PER_PAGE,
     category: selectedCategory || undefined,
     brand: selectedBrand || undefined,
     minPrice: minPrice ? parseFloat(minPrice) : undefined,
     maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+    size: selectedSize || undefined,
+    purpose: selectedPurpose || undefined,
     inStock: inStockOnly || undefined,
     sort: sortBy || undefined,
+  });
+
+  const pagination = usePagination({
+    basePath: "/products",
+    paramKey: "page",
+    pagination:
+      !searchQuery.trim() && productsPagination
+        ? {
+            currentPage: productsPagination.currentPage,
+            totalPages: productsPagination.totalPages,
+            totalItems: productsPagination.totalProducts,
+            limit: PRODUCTS_PER_PAGE,
+          }
+        : null,
   });
 
   useEffect(() => {
@@ -74,30 +118,62 @@ export default function ProductsPage() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    async function fetchFilterOptions() {
+      try {
+        const res = await productAPI.getFilterOptions();
+        if (res.status === "success" && res.data) {
+          setFilterOptions({
+            sizes: res.data.sizes || [],
+            purposes: res.data.purposes || [],
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch filter options", err);
+      }
+    }
+    fetchFilterOptions();
+  }, []);
+
   const hasActiveFilters =
+    !!searchQuery.trim() ||
     !!selectedCategory ||
     !!selectedBrand ||
     !!minPrice ||
     !!maxPrice ||
+    !!selectedSize ||
+    !!selectedPurpose ||
     inStockOnly ||
     !!sortBy;
 
   const activeFilterCount = [
+    searchQuery.trim(),
     selectedCategory,
     selectedBrand,
     minPrice,
     maxPrice,
+    selectedSize,
+    selectedPurpose,
     inStockOnly ? "inStock" : "",
     sortBy,
   ].filter(Boolean).length;
 
   const clearFilters = () => {
+    setSearchQuery("");
     setSelectedCategory("");
     setSelectedBrand("");
     setMinPrice("");
     setMaxPrice("");
+    setSelectedSize("");
+    setSelectedPurpose("");
     setInStockOnly(false);
     setSortBy("");
+    router.push("/products");
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    pagination.resetPage({ q: null, page: null });
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -105,14 +181,18 @@ export default function ProductsPage() {
     const params = new URLSearchParams(searchParams.toString());
     if (searchQuery.trim()) {
       params.set("q", searchQuery.trim());
+      params.delete("page");
     } else {
       params.delete("q");
+      params.delete("page");
     }
-    router.push(`/products?${params.toString()}`);
+    router.push(
+      params.toString() ? `/products?${params.toString()}` : "/products",
+    );
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8 px-4">
+    <div className="min-h-screen bg-slate-900 py-4 sm:py-8 px-2 sm:px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header + search + filter toggle */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -129,8 +209,7 @@ export default function ProductsPage() {
             {/* Inline search for this page (optional, client-side URL only) */}
             <form
               onSubmit={handleSearchSubmit}
-              className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2.5 w-full sm:w-72"
-            >
+              className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2.5 w-full sm:w-72">
               <Search className="w-5 h-5 text-slate-400 shrink-0" />
               <input
                 type="text"
@@ -144,8 +223,7 @@ export default function ProductsPage() {
             <button
               type="button"
               onClick={() => setShowFilters((prev) => !prev)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm hover:bg-slate-700 transition-colors"
-            >
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm hover:bg-slate-700 transition-colors">
               <SlidersHorizontal className="w-4 h-4" />
               <span>ფილტრები</span>
               {activeFilterCount > 0 && (
@@ -160,17 +238,30 @@ export default function ProductsPage() {
         {/* Active filter chips */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mb-4">
+            {searchQuery.trim() && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
+                ძებნა: &quot;{searchQuery.trim()}&quot;
+                <X className="w-3 h-3" />
+              </button>
+            )}
             {selectedCategory && (
               <button
                 type="button"
                 onClick={() => setSelectedCategory("")}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600"
-              >
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
                 კატეგორია:{" "}
-                {
-                  categories.find((c) => c._id === selectedCategory)?.name ??
-                  "არჩევანი"
-                }
+                {(() => {
+                  const cat = categories.find(
+                    (c) => c._id === selectedCategory,
+                  );
+                  if (!cat) return "არჩევანი";
+                  return cat.isSubcategory && cat.parent
+                    ? `${cat.parent.name} › ${cat.name}`
+                    : cat.name;
+                })()}
                 <X className="w-3 h-3" />
               </button>
             )}
@@ -178,8 +269,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setSelectedBrand("")}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600"
-              >
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
                 ბრენდი: {selectedBrand}
                 <X className="w-3 h-3" />
               </button>
@@ -191,9 +281,26 @@ export default function ProductsPage() {
                   setMinPrice("");
                   setMaxPrice("");
                 }}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600"
-              >
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
                 ფასი: {minPrice || "0"} - {maxPrice || "∞"} ₾
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            {selectedSize && (
+              <button
+                type="button"
+                onClick={() => setSelectedSize("")}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
+                ზომა: {selectedSize}
+                <X className="w-3 h-3" />
+              </button>
+            )}
+            {selectedPurpose && (
+              <button
+                type="button"
+                onClick={() => setSelectedPurpose("")}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
+                დანიშნულება: {selectedPurpose}
                 <X className="w-3 h-3" />
               </button>
             )}
@@ -201,8 +308,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setInStockOnly(false)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600"
-              >
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
                 მხოლოდ მარაგში
                 <X className="w-3 h-3" />
               </button>
@@ -211,8 +317,7 @@ export default function ProductsPage() {
               <button
                 type="button"
                 onClick={() => setSortBy("")}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600"
-              >
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 text-slate-100 text-xs border border-slate-600">
                 დალაგება: {sortBy}
                 <X className="w-3 h-3" />
               </button>
@@ -220,8 +325,7 @@ export default function ProductsPage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-slate-300 text-xs border border-slate-700 hover:bg-slate-800"
-            >
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-slate-300 text-xs border border-slate-700 hover:bg-slate-800">
               გასუფთავება
             </button>
           </div>
@@ -229,92 +333,139 @@ export default function ProductsPage() {
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mb-6 rounded-2xl bg-slate-900/80 backdrop-blur-sm p-6 shadow-xl shadow-black/20 ring-1 ring-slate-700/80">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
               {/* Category */}
-              <div>
-                <label className="block text-slate-300 text-sm font-semibold mb-2">
+              <div className="space-y-1.5">
+                <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   კატეგორია
                 </label>
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
-                >
+                  className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
                   <option value="">ყველა კატეგორია</option>
                   {categories.map((cat) => (
                     <option key={cat._id} value={cat._id}>
-                      {cat.name}
+                      {cat.isSubcategory && cat.parent
+                        ? `${cat.parent.name} › ${cat.name}`
+                        : cat.name}
                     </option>
                   ))}
                 </select>
               </div>
 
               {/* Brand */}
-              <div>
-                <label className="block text-slate-300 text-sm font-semibold mb-2">
+              <div className="space-y-1.5">
+                <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   ბრენდი
                 </label>
                 <input
                   type="text"
                   value={selectedBrand}
                   onChange={(e) => setSelectedBrand(e.target.value)}
-                  placeholder="მაგ: Knauf"
-                  className="w-full px-3 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
+                  placeholder="მაგ: Knauf, Bosch"
+                  className="w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
                 />
               </div>
 
+              {/* Size */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
+                  ზომა
+                </label>
+                <select
+                  value={selectedSize}
+                  onChange={(e) => setSelectedSize(e.target.value)}
+                  className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
+                  <option value="">ყველა ზომა</option>
+                  {filterOptions.sizes.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Purpose */}
+              <div className="space-y-1.5">
+                <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
+                  დანიშნულება
+                </label>
+                <select
+                  value={selectedPurpose}
+                  onChange={(e) => setSelectedPurpose(e.target.value)}
+                  className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
+                  <option value="">ყველა დანიშნულება</option>
+                  {filterOptions.purposes.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Price range */}
-              <div>
-                <label className="block text-slate-300 text-sm font-semibold mb-2">
+              <div className="space-y-1.5 lg:col-span-2">
+                <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   ფასის დიაპაზონი (₾)
                 </label>
-                <div className="flex gap-2 mb-2">
+                <div className="flex gap-3 items-center">
                   <input
                     type="number"
-                    placeholder="Min"
+                    placeholder="მინ."
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
-                    className="w-1/2 px-3 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
+                    className="flex-1 min-w-0 px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
                   />
+                  <span className="text-slate-500 shrink-0">–</span>
                   <input
                     type="number"
-                    placeholder="Max"
+                    placeholder="მაქს."
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
-                    className="w-1/2 px-3 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
+                    className="flex-1 min-w-0 px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
                   />
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {pricePresets.map((preset) => (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => {
-                        setMinPrice(String(preset.min));
-                        setMaxPrice(
-                          preset.max !== undefined ? String(preset.max) : "",
-                        );
-                      }}
-                      className="px-3 py-2 rounded-full text-xs bg-slate-900 border border-slate-700 text-slate-300 hover:border-orange-500 hover:text-orange-400 transition-colors"
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {pricePresets.map((preset) => {
+                    const isActive =
+                      minPrice === String(preset.min) &&
+                      (preset.max === undefined
+                        ? !maxPrice
+                        : maxPrice === String(preset.max));
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          setMinPrice(String(preset.min));
+                          setMaxPrice(
+                            preset.max !== undefined ? String(preset.max) : "",
+                          );
+                        }}
+                        className={
+                          isActive
+                            ? "px-3.5 py-1.5 rounded-lg text-xs font-medium bg-orange-500/20 text-orange-400 ring-1 ring-orange-500/40 transition-all"
+                            : "px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 text-slate-400 hover:text-slate-200 hover:bg-slate-700/80 ring-1 ring-slate-600/60 transition-all"
+                        }>
+                        {preset.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Sort + stock */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-slate-300 text-sm font-semibold mb-2">
+              <div className="space-y-3 lg:col-span-2">
+                <div className="space-y-1.5">
+                  <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                     დალაგება
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full px-3 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
-                  >
+                    className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
                     <option value="">ნაგულისხმევი</option>
                     <option value="price">ფასი (ზრდადობით)</option>
                     <option value="-price">ფასი (კლებადობით)</option>
@@ -322,14 +473,16 @@ export default function ProductsPage() {
                     <option value="-createdAt">უახლესი</option>
                   </select>
                 </div>
-                <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+                <label className="inline-flex items-center gap-3 py-2 cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={inStockOnly}
                     onChange={(e) => setInStockOnly(e.target.checked)}
-                    className="w-5 h-5 text-orange-500 focus:ring-orange-500 border-slate-600 bg-slate-900"
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-orange-500 focus:ring-2 focus:ring-orange-500/40 focus:ring-offset-0 cursor-pointer"
                   />
-                  მხოლოდ მარაგში
+                  <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
+                    მხოლოდ მარაგში
+                  </span>
                 </label>
               </div>
             </div>
@@ -344,18 +497,32 @@ export default function ProductsPage() {
         ) : error ? (
           <div className="py-20 text-center text-red-400">{error}</div>
         ) : products.length === 0 ? (
-          <div className="py-20 text-center text-slate-400">
-            პროდუქტები ვერ მოიძებნა შერჩეული ფილტრებით.
+          <div className="py-20 text-center">
+            <p className="text-slate-400 mb-4">
+              პროდუქტები ვერ მოიძებნა შერჩეული ფილტრებით.
+            </p>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="px-5 py-2.5 rounded-xl bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors text-sm font-medium">
+                გაასუფთავე ფილტრები
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product: any) => (
-              <ProductCard key={product._id} product={product} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+              {products.map((product: any) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            <PaginationBar {...pagination} className="mt-10" />
+          </>
         )}
       </div>
     </div>
   );
 }
-

@@ -21,22 +21,36 @@ const seedDatabase = async () => {
     await Product.deleteMany({});
     console.log('✅ Cleared old data');
 
-    // Insert categories
+    // Insert categories: first top-level, then subcategories with parent
     console.log('📁 Creating categories...');
-    const categories = await Category.insertMany(categoriesData);
-    console.log(`✅ Created ${categories.length} categories`);
-
-    // Create a map of category names to IDs
+    const topLevel = categoriesData.filter(c => !c.parentSlug);
+    const subcategoriesData = categoriesData.filter(c => c.parentSlug);
+    const topLevelCategories = await Category.insertMany(topLevel);
+    const slugToId = {};
+    topLevelCategories.forEach(cat => {
+      slugToId[cat.slug] = cat._id;
+    });
+    const subcategoriesToInsert = subcategoriesData.map(({ parentSlug, ...rest }) => ({
+      ...rest,
+      parent: slugToId[parentSlug] || null
+    }));
+    const subcategories = await Category.insertMany(subcategoriesToInsert);
+    const allCategories = [...topLevelCategories, ...subcategories];
     const categoryMap = {};
-    categories.forEach(cat => {
+    allCategories.forEach(cat => {
       categoryMap[cat.name] = cat._id;
     });
+    console.log(`✅ Created ${allCategories.length} categories (${topLevel.length} top-level, ${subcategories.length} subcategories)`);
 
-    // Insert products with category references
+    // Insert products with category references (categoryName -> id); include size, purpose
+    // Rating and reviewsCount are not seeded — they stay 0 until real reviews exist
     console.log('🛍️  Creating products...');
-    const productsWithCategories = productsData.map(product => ({
+    const productsWithCategories = productsData.map(({ categoryName, reviews, rating, ...product }) => ({
       ...product,
-      category: categoryMap[product.categoryName]
+      category: categoryMap[categoryName],
+      rating: 0,
+      reviewsCount: 0,
+      reviews: []
     }));
 
     const products = await Product.insertMany(productsWithCategories);
@@ -45,7 +59,7 @@ const seedDatabase = async () => {
     // Summary
     console.log('\n🎉 Database seeded successfully!');
     console.log(`📊 Summary:`);
-    console.log(`   - Categories: ${categories.length}`);
+    console.log(`   - Categories: ${allCategories.length}`);
     console.log(`   - Products: ${products.length}`);
     
     process.exit(0);

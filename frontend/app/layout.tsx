@@ -23,7 +23,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Didostati - სარემონტო მასალები და სწრაფი მიწოდება",
-  description: "ხარისხიანი ინსტრუმენტები, მასალები და აღჭურვილობა გორიში. თქვენი სანდო პარტნიორი სარემონტო მასალებისთვის.",
+  description:
+    "ხარისხიანი ინსტრუმენტები, მასალები და აღჭურვილობა გორიში. თქვენი სანდო პარტნიორი სარემონტო მასალებისთვის.",
 };
 
 export default function RootLayout({
@@ -34,19 +35,16 @@ export default function RootLayout({
   return (
     <html lang="ka">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-900 text-slate-100`}
-      >
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-900 text-slate-100`}>
         <AuthProvider>
           <CartProvider>
             <WishlistProvider>
               <NotificationProvider>
                 <Navbar />
-                <main className="min-h-screen">
-                  {children}
-                </main>
+                <main className="min-h-screen">{children}</main>
                 <Footer />
-                <FloatingContact />
-                <ApiStatus />
+                {/* <FloatingContact /> */}
+                {/* <ApiStatus /> */}
                 <AdminNav />
               </NotificationProvider>
             </WishlistProvider>

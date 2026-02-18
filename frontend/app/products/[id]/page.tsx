@@ -310,7 +310,7 @@ export default function ProductDetailsPage() {
       )
     : 0;
 
-  const mainImage = product.images[selectedImage]?.url || "/placeholder.png";
+  const mainImage = product.images[selectedImage]?.url || "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&h=600&fit=crop";
 
   return (
     <div className="min-h-screen bg-slate-900 py-8">
@@ -351,6 +351,8 @@ export default function ProductDetailsPage() {
                 fill
                 className="object-cover"
                 priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                unoptimized={mainImage.startsWith("http://localhost") || mainImage.startsWith("https://localhost")}
               />
             </div>
 
@@ -371,6 +373,8 @@ export default function ProductDetailsPage() {
                       alt={img.alt || product.name}
                       fill
                       className="object-cover"
+                      sizes="120px"
+                      unoptimized={img.url.startsWith("http://localhost") || img.url.startsWith("https://localhost")}
                     />
                   </button>
                 ))}
@@ -547,11 +551,13 @@ export default function ProductDetailsPage() {
               <button
                 onClick={async () => await toggleWishlist(product._id)}
                 className="w-14 h-14 flex items-center justify-center bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-xl transition-colors touch-manipulation">
-                <Heart className={`w-6 h-6 transition-colors ${
-                  isInWishlist(product._id) 
-                    ? "fill-red-500 text-red-500" 
-                    : "text-slate-300"
-                }`} />
+                <Heart
+                  className={`w-6 h-6 transition-colors ${
+                    isInWishlist(product._id)
+                      ? "fill-red-500 text-red-500"
+                      : "text-slate-300"
+                  }`}
+                />
               </button>
             </div>
 
@@ -744,7 +750,7 @@ export default function ProductDetailsPage() {
             <h2 className="text-2xl font-bold text-slate-100 mb-4">
               მსგავსი პროდუქტები
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
               {related.slice(0, 4).map((p) => (
                 <ProductCard key={p._id} product={p as any} />
               ))}

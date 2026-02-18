@@ -54,7 +54,7 @@ const Hero = () => {
               </Link>
               
               <Link 
-                href="/products"
+                href="/categories"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-lg rounded-lg border-2 border-slate-700 hover:border-orange-500/50 transition-all"
               >
                 კატეგორიები

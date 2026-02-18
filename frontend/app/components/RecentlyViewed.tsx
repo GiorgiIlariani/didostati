@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
+import { productAPI } from "@/lib/api";
 
 const STORAGE_KEY = "didostati_recently_viewed";
+const MAX_DISPLAY = 4;
 
 type RecentlyViewedProduct = {
   _id: string;
@@ -15,6 +17,7 @@ type RecentlyViewedProduct = {
   brand: string;
   rating?: number;
   reviewsCount?: number;
+  viewCount?: number;
   badge?: string;
   inStock: boolean;
   stock: number;
@@ -22,24 +25,75 @@ type RecentlyViewedProduct = {
 
 const RecentlyViewed = () => {
   const [items, setItems] = useState<RecentlyViewedProduct[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
+    let cancelled = false;
 
-      const parsed = JSON.parse(raw) as RecentlyViewedProduct[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setItems(parsed);
+    (async () => {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          setLoading(false);
+          return;
+        }
+
+        const parsed = JSON.parse(raw) as { _id: string }[];
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          setLoading(false);
+          return;
+        }
+
+        const ids = parsed.slice(0, MAX_DISPLAY).map((p) => p._id);
+        const results = await Promise.all(
+          ids.map((id) => productAPI.getByIdOptional(id))
+        );
+
+        if (cancelled) return;
+
+        const products: RecentlyViewedProduct[] = [];
+        for (const res of results) {
+          if (res?.status === "success" && res?.data?.product) {
+            products.push(res.data.product);
+          }
+        }
+        setItems(products);
+
+        // Keep localStorage in sync: only IDs that still exist (avoids 404s after re-seed)
+        if (products.length > 0) {
+          const toStore = products.map((p) => ({
+            _id: p._id,
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            originalPrice: p.originalPrice,
+            images: p.images,
+            brand: p.brand,
+            inStock: p.inStock,
+            stock: p.stock,
+          }));
+          const rest = parsed.filter((p: { _id: string }) => !ids.includes(p._id));
+          const merged = [...toStore, ...rest].slice(0, 10);
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        } else if (parsed.length > 0) {
+          // All refetches failed (e.g. DB was re-seeded) – clear stale list
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch (e) {
+        console.error("Failed to load recently viewed products", e);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to load recently viewed products", e);
-    }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (items.length === 0) {
+  if (loading || items.length === 0) {
     return null;
   }
 
@@ -59,8 +113,8 @@ const RecentlyViewed = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {items.slice(0, 4).map((product) => (
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
+          {items.map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}
         </div>

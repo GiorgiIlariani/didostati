@@ -28,6 +28,7 @@ interface Order {
   paymentStatus: string;
   totalAmount: number;
   deliveryFee: number;
+  deliveryType?: 'standard' | 'express' | 'pickup';
   items: OrderItem[];
   customer: {
     name: string;
@@ -316,7 +317,7 @@ export default function AdminOrdersPage() {
                       ₾{order.totalAmount.toFixed(2)}
                     </div>
                     <div className="text-xs text-slate-400 mb-4">
-                      მიწოდება: ₾{order.deliveryFee.toFixed(2)}
+                      {order.deliveryType === 'pickup' ? 'თვითგატანა' : order.deliveryType === 'express' ? 'ექსპრეს მიწოდება' : 'მიწოდება'}: ₾{order.deliveryFee.toFixed(2)}
                     </div>
                     <Link
                       href={`/orders/${order._id}`}

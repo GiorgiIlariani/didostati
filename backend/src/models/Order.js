@@ -60,6 +60,11 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  deliveryType: {
+    type: String,
+    enum: ['standard', 'express', 'pickup'],
+    default: 'standard'
+  },
   status: {
     type: String,
     enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],

@@ -28,7 +28,11 @@ const supportRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
     },
-    // Optional: if user is logged in, we can attach userId later
+    requestType: {
+      type: String,
+      enum: ['general', 'consultation', 'technical'],
+      default: 'general',
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

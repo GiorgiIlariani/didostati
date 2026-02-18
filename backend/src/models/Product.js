@@ -33,32 +33,32 @@ const reviewSchema = new mongoose.Schema(
 const productSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Product name is required'],
+    required: [true, 'პროდუქტის სახელი აუცილებელია'],
     trim: true,
-    maxlength: [200, 'Product name cannot exceed 200 characters']
+    maxlength: [200, 'პროდუქტის სახელი 200 სიმბოლოზე მეტი ვერ იქნება']
   },
   description: {
     type: String,
-    required: [true, 'Product description is required'],
-    maxlength: [2000, 'Description cannot exceed 2000 characters']
+    required: [true, 'პროდუქტის აღწერა აუცილებელია'],
+    maxlength: [2000, 'აღწერა 2000 სიმბოლოზე მეტი ვერ იქნება']
   },
   price: {
     type: Number,
-    required: [true, 'Product price is required'],
-    min: [0, 'Price cannot be negative']
+    required: [true, 'ფასი აუცილებელია'],
+    min: [0, 'ფასი უარყოფითი ვერ იქნება']
   },
   originalPrice: {
     type: Number,
-    min: [0, 'Original price cannot be negative']
+    min: [0, 'ძველი ფასი უარყოფითი ვერ იქნება']
   },
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
-    required: [true, 'Product category is required']
+    required: [true, 'კატეგორია აუცილებელია']
   },
   brand: {
     type: String,
-    required: [true, 'Product brand is required']
+    required: [true, 'ბრენდი აუცილებელია']
   },
   images: [{
     url: {
@@ -73,8 +73,8 @@ const productSchema = new mongoose.Schema({
   },
   stock: {
     type: Number,
-    required: [true, 'Stock quantity is required'],
-    min: [0, 'Stock cannot be negative'],
+    required: [true, 'ნაშთის რაოდენობა აუცილებელია'],
+    min: [0, 'ნაშთი უარყოფითი ვერ იქნება'],
     default: 0
   },
   manualUrl: {
@@ -119,6 +119,16 @@ const productSchema = new mongoose.Schema({
     of: String
   },
   tags: [String],
+  size: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  purpose: {
+    type: String,
+    trim: true,
+    default: null
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -137,5 +147,6 @@ productSchema.index({
 });
 productSchema.index({ category: 1, price: 1 });
 productSchema.index({ inStock: 1, isActive: 1 });
+productSchema.index({ size: 1, purpose: 1 });
 
 module.exports = mongoose.model('Product', productSchema);

@@ -219,10 +219,12 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    const deliveryFee = req.body.deliveryFee || 0;
+    const deliveryFee = req.body.deliveryFee ?? 0;
+    const deliveryType = ['standard', 'express', 'pickup'].includes(req.body.deliveryType)
+      ? req.body.deliveryType
+      : 'standard';
     const totalAmount = subtotal + deliveryFee;
 
-    // Create order
     const order = await Order.create({
       customer: customerInfo,
       items: orderItems,
@@ -235,6 +237,7 @@ exports.createOrder = async (req, res) => {
       },
       totalAmount,
       deliveryFee,
+      deliveryType,
       paymentMethod,
       paymentStatus: 'pending',
       status: 'pending',

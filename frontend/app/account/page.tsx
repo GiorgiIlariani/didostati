@@ -120,6 +120,33 @@ export default function AccountPage() {
               სწრაფი წვდომა თქვენს შეკვეთებზე, სტატუსებსა და დეტალებზე.
             </p>
           </Link>
+
+          {/* Admin tools (only for admins) */}
+          {user.role === "admin" && (
+            <Link
+              href="/admin/advertisements"
+              className="group bg-slate-800/80 border border-amber-500/60 rounded-2xl p-5 hover:border-orange-500/80 hover:shadow-lg hover:shadow-orange-500/20 transition-all"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 flex items-center justify-center rounded-full bg-orange-500/15 border border-orange-500/60">
+                    <Package className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-100">
+                      Admin – რეკლამების მართვა
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      გახსენი და მართე ბანერები / ვიდეო რეკლამები.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 group-hover:text-slate-300 transition-colors">
+                მხოლოდ ადმინისტრატორისთვის ხილული ბმული.
+              </p>
+            </Link>
+          )}
         </div>
       </div>
     </div>

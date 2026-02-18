@@ -1,5 +1,7 @@
-const Product = require('../models/Product');
-const Order = require('../models/Order');
+const mongoose = require("mongoose");
+const Product = require("../models/Product");
+const Order = require("../models/Order");
+const Category = require("../models/Category");
 
 // Get all products with filtering, sorting, and pagination
 exports.getAllProducts = async (req, res) => {
@@ -7,20 +9,46 @@ exports.getAllProducts = async (req, res) => {
     const {
       page = 1,
       limit = 12,
-      category,
+      category: categoryParam,
       brand,
       minPrice,
       maxPrice,
       inStock,
-      sort = '-createdAt'
+      size,
+      purpose,
+      sort = "-createdAt",
+      q: searchQuery,
     } = req.query;
 
     // Build query
     const query = { isActive: true };
-    
-    if (category) query.category = category;
+
+    // Category: accept either ObjectId or slug
+    if (categoryParam && categoryParam.trim()) {
+      const isValidId =
+        mongoose.Types.ObjectId.isValid(categoryParam) &&
+        String(new mongoose.Types.ObjectId(categoryParam)) ===
+          String(categoryParam);
+      if (isValidId) {
+        query.category = categoryParam;
+      } else {
+        const cat = await Category.findOne({
+          slug: categoryParam.trim(),
+          isActive: true,
+        });
+        if (cat) query.category = cat._id;
+      }
+    }
+
+    // Optional text search (combines with filters)
+    if (searchQuery && typeof searchQuery === "string" && searchQuery.trim()) {
+      query.$text = { $search: searchQuery.trim() };
+    }
+
     if (brand) query.brand = brand;
-    if (inStock !== undefined) query.inStock = inStock === 'true';
+    if (inStock !== undefined) query.inStock = inStock === "true";
+    if (size) query.size = size;
+    if (purpose) query.purpose = purpose;
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
@@ -29,7 +57,7 @@ exports.getAllProducts = async (req, res) => {
 
     // Execute query with pagination
     const products = await Product.find(query)
-      .populate('category', 'name slug')
+      .populate("category", "name slug")
       .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit)
@@ -43,21 +71,22 @@ exports.getAllProducts = async (req, res) => {
 
     const ordersToday = await Order.find({
       createdAt: { $gte: todayStart, $lte: todayEnd },
-      status: { $ne: 'cancelled' }
+      status: { $ne: "cancelled" },
     });
 
     const soldCountsMap = {};
-    ordersToday.forEach(order => {
-      order.items.forEach(item => {
+    ordersToday.forEach((order) => {
+      order.items.forEach((item) => {
         if (item.product) {
           const productId = item.product.toString();
-          soldCountsMap[productId] = (soldCountsMap[productId] || 0) + (item.quantity || 0);
+          soldCountsMap[productId] =
+            (soldCountsMap[productId] || 0) + (item.quantity || 0);
         }
       });
     });
 
     // Attach sold counts to products
-    const productsWithSales = products.map(product => {
+    const productsWithSales = products.map((product) => {
       const productObj = product.toObject();
       productObj.soldCount = soldCountsMap[product._id.toString()] || 0;
       return productObj;
@@ -67,21 +96,46 @@ exports.getAllProducts = async (req, res) => {
     const count = await Product.countDocuments(query);
 
     res.json({
-      status: 'success',
+      status: "success",
       data: {
         products: productsWithSales,
         pagination: {
           currentPage: Number(page),
           totalPages: Math.ceil(count / limit),
           totalProducts: count,
-          hasMore: page * limit < count
-        }
-      }
+          hasMore: page * limit < count,
+        },
+      },
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Get filter options (sizes, purposes) for product listing
+exports.getFilterOptions = async (req, res) => {
+  try {
+    const [sizes, purposes] = await Promise.all([
+      Product.distinct("size", {
+        isActive: true,
+        size: { $exists: true, $ne: null, $ne: "" },
+      }).then((arr) => arr.filter(Boolean).sort()),
+      Product.distinct("purpose", {
+        isActive: true,
+        purpose: { $exists: true, $ne: null, $ne: "" },
+      }).then((arr) => arr.filter(Boolean).sort()),
+    ]);
+    res.json({
+      status: "success",
+      data: { sizes, purposes },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -94,10 +148,10 @@ exports.getFeaturedProducts = async (req, res) => {
     const products = await Product.find({
       isActive: true,
       inStock: true,
-      badge: { $in: ['Best Seller', 'Popular', 'New'] }
+      badge: { $in: ["Best Seller", "Popular", "New"] },
     })
-      .populate('category', 'name slug')
-      .sort('-rating -reviews')
+      .populate("category", "name slug")
+      .sort("-rating -reviewsCount")
       .limit(Number(limit));
 
     // Calculate sold counts for today
@@ -108,33 +162,34 @@ exports.getFeaturedProducts = async (req, res) => {
 
     const ordersToday = await Order.find({
       createdAt: { $gte: todayStart, $lte: todayEnd },
-      status: { $ne: 'cancelled' }
+      status: { $ne: "cancelled" },
     });
 
     const soldCountsMap = {};
-    ordersToday.forEach(order => {
-      order.items.forEach(item => {
+    ordersToday.forEach((order) => {
+      order.items.forEach((item) => {
         if (item.product) {
           const productId = item.product.toString();
-          soldCountsMap[productId] = (soldCountsMap[productId] || 0) + (item.quantity || 0);
+          soldCountsMap[productId] =
+            (soldCountsMap[productId] || 0) + (item.quantity || 0);
         }
       });
     });
 
-    const productsWithSales = products.map(product => {
+    const productsWithSales = products.map((product) => {
       const productObj = product.toObject();
       productObj.soldCount = soldCountsMap[product._id.toString()] || 0;
       return productObj;
     });
 
     res.json({
-      status: 'success',
-      data: { products: productsWithSales }
+      status: "success",
+      data: { products: productsWithSales },
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -148,15 +203,15 @@ exports.getPromotions = async (req, res) => {
     const products = await Product.find({
       isActive: true,
       $or: [
-        { badge: 'Sale' },
+        { badge: "Sale" },
         {
           originalPrice: { $exists: true, $ne: null, $gt: 0 },
-          $expr: { $gt: ['$originalPrice', '$price'] }
-        }
-      ]
+          $expr: { $gt: ["$originalPrice", "$price"] },
+        },
+      ],
     })
-      .populate('category', 'name slug')
-      .sort('-createdAt')
+      .populate("category", "name slug")
+      .sort("-createdAt")
       .limit(Number(limit));
 
     // Calculate sold counts for today
@@ -167,33 +222,34 @@ exports.getPromotions = async (req, res) => {
 
     const ordersToday = await Order.find({
       createdAt: { $gte: todayStart, $lte: todayEnd },
-      status: { $ne: 'cancelled' }
+      status: { $ne: "cancelled" },
     });
 
     const soldCountsMap = {};
-    ordersToday.forEach(order => {
-      order.items.forEach(item => {
+    ordersToday.forEach((order) => {
+      order.items.forEach((item) => {
         if (item.product) {
           const productId = item.product.toString();
-          soldCountsMap[productId] = (soldCountsMap[productId] || 0) + (item.quantity || 0);
+          soldCountsMap[productId] =
+            (soldCountsMap[productId] || 0) + (item.quantity || 0);
         }
       });
     });
 
-    const productsWithSales = products.map(product => {
+    const productsWithSales = products.map((product) => {
       const productObj = product.toObject();
       productObj.soldCount = soldCountsMap[product._id.toString()] || 0;
       return productObj;
     });
 
     res.json({
-      status: 'success',
-      data: { products: productsWithSales }
+      status: "success",
+      data: { products: productsWithSales },
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -205,8 +261,8 @@ exports.searchProducts = async (req, res) => {
 
     if (!q || !q.trim()) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Search query is required'
+        status: "error",
+        message: "Search query is required",
       });
     }
 
@@ -217,40 +273,40 @@ exports.searchProducts = async (req, res) => {
     let products = await Product.find(
       {
         $text: { $search: cleanQuery },
-        isActive: true
+        isActive: true,
       },
       {
-        score: { $meta: 'textScore' }
-      }
+        score: { $meta: "textScore" },
+      },
     )
-      .sort({ score: { $meta: 'textScore' } })
-      .populate('category', 'name slug')
+      .sort({ score: { $meta: "textScore" } })
+      .populate("category", "name slug")
       .limit(maxResults)
       .exec();
 
     // Fallback: if no results, use case-insensitive partial match on name/brand
     if (products.length === 0) {
-      const regex = new RegExp(cleanQuery, 'i');
+      const regex = new RegExp(cleanQuery, "i");
       products = await Product.find({
         isActive: true,
-        $or: [{ name: regex }, { brand: regex }]
+        $or: [{ name: regex }, { brand: regex }],
       })
-        .populate('category', 'name slug')
+        .populate("category", "name slug")
         .limit(maxResults)
         .exec();
     }
 
     res.json({
-      status: 'success',
+      status: "success",
       data: {
         products,
-        count: products.length
-      }
+        count: products.length,
+      },
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -259,19 +315,20 @@ exports.searchProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate('category', 'name slug description')
-      .populate('reviews.user', 'name');
+      .populate("category", "name slug description")
+      .populate("reviews.user", "name");
 
     if (!product) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Product not found'
+        status: "error",
+        message: "Product not found",
       });
     }
 
     // Increment view count (async, don't wait)
-    Product.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } })
-      .catch(err => console.error('Failed to increment view count:', err));
+    Product.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } }).catch(
+      (err) => console.error("Failed to increment view count:", err),
+    );
 
     // Calculate sold count for today
     const todayStart = new Date();
@@ -281,12 +338,12 @@ exports.getProductById = async (req, res) => {
 
     const ordersToday = await Order.find({
       createdAt: { $gte: todayStart, $lte: todayEnd },
-      status: { $ne: 'cancelled' }
+      status: { $ne: "cancelled" },
     });
 
     let soldToday = 0;
-    ordersToday.forEach(order => {
-      order.items.forEach(item => {
+    ordersToday.forEach((order) => {
+      order.items.forEach((item) => {
         if (item.product && item.product.toString() === req.params.id) {
           soldToday += item.quantity || 0;
         }
@@ -295,8 +352,9 @@ exports.getProductById = async (req, res) => {
 
     // Update soldCount if different (async, don't wait)
     if (soldToday !== product.soldCount) {
-      Product.findByIdAndUpdate(req.params.id, { soldCount: soldToday })
-        .catch(err => console.error('Failed to update sold count:', err));
+      Product.findByIdAndUpdate(req.params.id, { soldCount: soldToday }).catch(
+        (err) => console.error("Failed to update sold count:", err),
+      );
     }
 
     // Return product with updated counts
@@ -305,13 +363,13 @@ exports.getProductById = async (req, res) => {
     productObj.soldCount = soldToday; // Show today's sales
 
     res.json({
-      status: 'success',
-      data: { product: productObj }
+      status: "success",
+      data: { product: productObj },
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };
@@ -323,15 +381,15 @@ exports.addProductReview = async (req, res) => {
 
     if (!req.user) {
       return res.status(401).json({
-        status: 'error',
-        message: 'Login required to leave a review',
+        status: "error",
+        message: "Login required to leave a review",
       });
     }
 
     if (!rating || !comment) {
       return res.status(400).json({
-        status: 'error',
-        message: 'Rating and comment are required',
+        status: "error",
+        message: "Rating and comment are required",
       });
     }
 
@@ -339,14 +397,14 @@ exports.addProductReview = async (req, res) => {
 
     if (!product) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Product not found',
+        status: "error",
+        message: "Product not found",
       });
     }
 
     // Check if user already reviewed
     const existingReviewIndex = product.reviews.findIndex(
-      (r) => r.user.toString() === req.user._id.toString()
+      (r) => r.user.toString() === req.user._id.toString(),
     );
 
     if (existingReviewIndex > -1) {
@@ -377,32 +435,81 @@ exports.addProductReview = async (req, res) => {
     await product.save();
 
     res.status(201).json({
-      status: 'success',
+      status: "success",
       data: {
         product,
       },
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
+      status: "error",
       message: error.message,
     });
   }
 };
 
-// Create product (admin)
+// Get all products for admin (includes inactive)
+exports.getAdminAllProducts = async (req, res) => {
+  try {
+    const products = await Product.find({})
+      .populate("category", "name slug")
+      .sort("-createdAt")
+      .exec();
+
+    res.json({
+      status: "success",
+      data: {
+        products,
+        count: products.length,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Upload product image (admin) – returns public URL for use in product.images
+exports.uploadProductImage = (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({
+      status: "error",
+      message: 'No file uploaded. Use field name "image".',
+    });
+  }
+  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const url = `${baseUrl}/uploads/products/${req.file.filename}`;
+  res.status(200).json({
+    status: "success",
+    data: { url },
+  });
+};
+
+// Create product (admin) – validation/cast errors in Georgian
 exports.createProduct = async (req, res) => {
   try {
     const product = await Product.create(req.body);
 
     res.status(201).json({
-      status: 'success',
-      data: { product }
+      status: "success",
+      data: { product },
     });
   } catch (error) {
+    let message = error.message;
+    if (error.name === "ValidationError" && error.errors) {
+      const firstKey = Object.keys(error.errors)[0];
+      message = error.errors[firstKey].message;
+    } else if (error.name === "CastError") {
+      if (error.path === "category") message = "გთხოვთ აირჩიოთ კატეგორია";
+      else if (error.path === "price" || error.path === "originalPrice")
+        message = "ფასი არასწორი ფორმატისაა";
+      else message = "არასწორი მონაცემი: " + (error.path || "უცნობი ველი");
+    }
     res.status(400).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message,
     });
   }
 };
@@ -410,27 +517,36 @@ exports.createProduct = async (req, res) => {
 // Update product (admin)
 exports.updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!product) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Product not found'
+        status: "error",
+        message: "პროდუქტი ვერ მოიძებნა",
       });
     }
 
     res.json({
-      status: 'success',
-      data: { product }
+      status: "success",
+      data: { product },
     });
   } catch (error) {
+    let message = error.message;
+    if (error.name === "ValidationError" && error.errors) {
+      const firstKey = Object.keys(error.errors)[0];
+      message = error.errors[firstKey].message;
+    } else if (error.name === "CastError") {
+      if (error.path === "category") message = "გთხოვთ აირჩიოთ კატეგორია";
+      else if (error.path === "price" || error.path === "originalPrice")
+        message = "ფასი არასწორი ფორმატისაა";
+      else message = "არასწორი მონაცემი: " + (error.path || "უცნობი ველი");
+    }
     res.status(400).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message,
     });
   }
 };
@@ -442,19 +558,19 @@ exports.deleteProduct = async (req, res) => {
 
     if (!product) {
       return res.status(404).json({
-        status: 'error',
-        message: 'Product not found'
+        status: "error",
+        message: "პროდუქტი ვერ მოიძებნა",
       });
     }
 
     res.json({
-      status: 'success',
-      message: 'Product deleted successfully'
+      status: "success",
+      message: "პროდუქტი წარმატებით წაიშალა",
     });
   } catch (error) {
     res.status(500).json({
-      status: 'error',
-      message: error.message
+      status: "error",
+      message: error.message,
     });
   }
 };

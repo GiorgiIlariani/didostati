@@ -20,6 +20,7 @@ interface SupportRequest {
   phone: string;
   email?: string;
   message: string;
+  requestType?: 'general' | 'consultation' | 'technical';
   product?: Product;
   user?: {
     _id: string;
@@ -48,6 +49,12 @@ const statusColors: Record<string, string> = {
   new: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
   in_progress: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
   resolved: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+};
+
+const requestTypeLabels: Record<string, string> = {
+  general: 'ზოგადი',
+  consultation: 'კონსულტაცია',
+  technical: 'ტექნიკური'
 };
 
 export default function AdminSupportPage() {
@@ -211,13 +218,18 @@ export default function AdminSupportPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <h3 className="text-lg font-semibold text-slate-100">
                         {request.name}
                       </h3>
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${statusColors[request.status] || statusColors.new}`}>
                         {statusLabels[request.status] || request.status}
                       </span>
+                      {request.requestType && (
+                        <span className="px-2 py-1 rounded-md text-xs bg-slate-700 text-slate-300 border border-slate-600">
+                          {requestTypeLabels[request.requestType] || request.requestType}
+                        </span>
+                      )}
                     </div>
                     
                     <div className="space-y-1 text-sm text-slate-400">

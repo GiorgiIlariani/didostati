@@ -11,7 +11,11 @@ interface UseProductsOptions {
   minPrice?: number;
   maxPrice?: number;
   inStock?: boolean;
+  size?: string;
+  purpose?: string;
   sort?: string;
+  /** When provided, uses server-side search instead of getAll + filters */
+  search?: string;
 }
 
 export function useProducts(options?: UseProductsOptions) {
@@ -25,14 +29,20 @@ export function useProducts(options?: UseProductsOptions) {
       try {
         setLoading(true);
         setError(null);
-        const response = await productAPI.getAll(options);
-        
+        // Always use getAll so category, purpose, and other filters apply.
+        // Optional q (search) is combined with filters on the backend.
+        const { search, ...rest } = options ?? {};
+        const params = {
+          ...rest,
+          ...(search?.trim() ? { q: search.trim() } : {}),
+        };
+        const response = await productAPI.getAll(params);
         if (response.status === 'success') {
-          setProducts(response.data.products);
-          setPagination(response.data.pagination);
+          setProducts(response.data?.products ?? []);
+          setPagination(response.data?.pagination ?? null);
         }
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch products');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch products');
         setProducts([]);
       } finally {
         setLoading(false);

@@ -22,7 +22,7 @@ interface Product {
 }
 
 export default function WishlistPage() {
-  const { wishlistIds } = useWishlist();
+  const { wishlistIds, toggleWishlist } = useWishlist();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -41,11 +41,12 @@ export default function WishlistPage() {
               if (res.status === "success") {
                 return res.data.product as Product;
               }
-            } catch (e) {
-              console.error("Failed to load wishlist product", id, e);
+            } catch {
+              // Product deleted or missing: remove from wishlist so count stays correct
+              await toggleWishlist(id);
             }
             return null;
-          })
+          }),
         );
         setProducts(results.filter((p): p is Product => p !== null));
       } finally {
@@ -54,6 +55,7 @@ export default function WishlistPage() {
     }
 
     loadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reload when wishlistIds change
   }, [wishlistIds]);
 
   return (
@@ -87,11 +89,12 @@ export default function WishlistPage() {
               ჯერ არ გაქვთ რჩეულები
             </h2>
             <p className="text-slate-400">
-              დაამატეთ პროდუქტები „რჩეულებში“, რათა მარტივად იპოვოთ ისინი მოგვიანებით.
+              დაამატეთ პროდუქტები „რჩეულებში“, რათა მარტივად იპოვოთ ისინი
+              მოგვიანებით.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 lg:gap-6">
             {products.map((product) => (
               <ProductCard key={product._id} product={product} />
             ))}
@@ -101,4 +104,3 @@ export default function WishlistPage() {
     </div>
   );
 }
-

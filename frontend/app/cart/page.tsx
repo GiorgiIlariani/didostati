@@ -15,12 +15,25 @@
  */
 import { useCart } from "@/lib/context/CartContext";
 import { useAuth } from "@/lib/context/AuthContext";
+import { DELIVERY_BASE_LABEL, DELIVERY_CITIES } from "@/lib/utils/delivery";
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, MapPin } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, MapPin, Truck, Zap, Store } from "lucide-react";
 
 export default function CartPage() {
-  const { cart, updateQuantity, removeFromCart, requestDeliveryLocation, locationStatus } = useCart();
+  const {
+    cart,
+    updateQuantity,
+    removeFromCart,
+    deliveryType,
+    setDeliveryType,
+    deliveryCity,
+    setDeliveryCity,
+    requestDeliveryLocation,
+    locationStatus,
+    permissionDeniedHelp,
+    clearPermissionDeniedHelp,
+  } = useCart();
   const { user } = useAuth();
 
   if (cart.itemCount === 0) {
@@ -56,7 +69,7 @@ export default function CartPage() {
                 {/* Image */}
                 <div className="relative w-full sm:w-24 h-24 rounded-lg overflow-hidden bg-slate-900 shrink-0">
                   <Image
-                    src={item.image || "/placeholder.jpg"}
+                    src={item.image || "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=200&h=200&fit=crop"}
                     alt={item.name}
                     fill
                     className="object-cover"
@@ -115,7 +128,49 @@ export default function CartPage() {
           {/* Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 sticky top-4">
-              <h2 className="text-xl font-bold text-slate-100 mb-6">შეკვეთის შეჯამება</h2>
+              <h2 className="text-xl font-bold text-slate-100 mb-4">შეკვეთის შეჯამება</h2>
+
+              {/* Delivery type: standard / express / pickup */}
+              <div className="mb-4">
+                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">მიწოდების ტიპი</p>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors border-slate-600 hover:border-slate-500 has-[:checked]:border-orange-500 has-[:checked]:bg-slate-700/50">
+                    <input type="radio" name="deliveryType" value="standard" checked={deliveryType === "standard"} onChange={() => setDeliveryType("standard")} className="text-orange-500" />
+                    <Truck className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-200">მიწოდება</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors border-slate-600 hover:border-slate-500 has-[:checked]:border-orange-500 has-[:checked]:bg-slate-700/50">
+                    <input type="radio" name="deliveryType" value="express" checked={deliveryType === "express"} onChange={() => setDeliveryType("express")} className="text-orange-500" />
+                    <Zap className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-200">ექსპრეს მიწოდება</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors border-slate-600 hover:border-slate-500 has-[:checked]:border-orange-500 has-[:checked]:bg-slate-700/50">
+                    <input type="radio" name="deliveryType" value="pickup" checked={deliveryType === "pickup"} onChange={() => setDeliveryType("pickup")} className="text-orange-500" />
+                    <Store className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-200">თვითგატანა (₾0)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* City selector when delivery (standard/express) and no GPS or user wants to choose city */}
+              {deliveryType !== "pickup" && (
+                <div className="mb-4">
+                  <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider mb-1">ქალაქი (ტარიფის მიხედვით)</label>
+                  <select
+                    value={deliveryCity}
+                    onChange={(e) => setDeliveryCity(e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm text-slate-100 bg-slate-700 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                  >
+                    <option value="">აირჩიეთ ქალაქი ან მდებარეობა</option>
+                    {DELIVERY_CITIES.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name} — ₾{c.fee.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">ან გამოიყენეთ მდებარეობა ქვემოთ</p>
+                </div>
+              )}
 
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-slate-300 text-sm mb-2">
@@ -126,28 +181,47 @@ export default function CartPage() {
                   <span className="font-semibold">₾{cart.subtotal.toFixed(2)}</span>
                 </div>
 
-                {/* Delivery Fee */}
                 <div className="flex justify-between text-slate-300">
                   <div className="flex items-center gap-2">
                     <span>მიწოდების საფასური:</span>
-                    {locationStatus === 'denied' && (
-                      <button
-                        onClick={requestDeliveryLocation}
-                        className="text-xs text-orange-400 hover:text-orange-300 underline"
-                        type="button">
+                    {deliveryType !== "pickup" && (locationStatus === "denied" || locationStatus === "error") && !deliveryCity && (
+                      <button type="button" onClick={() => requestDeliveryLocation(true)} className="text-xs text-orange-400 hover:text-orange-300 underline">
                         განახლება
                       </button>
                     )}
                   </div>
-                  <span className="font-semibold">₾{cart.deliveryFee.toFixed(2)}</span>
+                  {cart.deliveryFeeResolved ? (
+                    <span className="font-semibold">₾{cart.deliveryFee.toFixed(2)}</span>
+                  ) : (
+                    <span className="text-slate-500">—</span>
+                  )}
                 </div>
+                {cart.deliveryFeeResolved && deliveryType === "pickup" && (
+                  <p className="text-xs text-slate-500 -mt-1">თვითგატანა — საფასური არ ეწერება</p>
+                )}
+                {cart.deliveryFeeResolved && deliveryType !== "pickup" && cart.deliveryLocationName && (
+                  <p className="text-xs text-slate-500 -mt-1">
+                    {DELIVERY_BASE_LABEL} → {cart.deliveryLocationName}
+                    {cart.deliveryDistanceKm != null ? ` (დაახლ. ${cart.deliveryDistanceKm} km)` : ""}
+                  </p>
+                )}
 
-                {locationStatus === 'denied' && (
+                {deliveryType !== "pickup" && !cart.deliveryFeeResolved && (
                   <div className="flex items-start gap-2 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
                     <MapPin className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                    <p className="text-xs text-slate-400">
-                      მიწოდების საფასურის გამოსათვლელად გთხოვთ მიუთითოთ თქვენი მდებარეობა.
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-slate-400">
+                        აირჩიეთ ქალაქი ზემოთ ან მიუთითეთ მდებარეობა.
+                      </p>
+                      {permissionDeniedHelp && (
+                        <p className="text-xs text-orange-400 mt-2">
+                          ნებართვა უარყოფილია. ბრაუზერის პარამეტრებში ჩართეთ მდებარეობის წვდომა და სცადეთ ხელახლა.
+                        </p>
+                      )}
+                    </div>
+                    {permissionDeniedHelp && (
+                      <button type="button" onClick={clearPermissionDeniedHelp} className="text-slate-500 hover:text-slate-300 text-xs shrink-0" aria-label="დახურვა">×</button>
+                    )}
                   </div>
                 )}
 
@@ -161,12 +235,20 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Checkout Button */}
-              <Link
-                href={user ? "/checkout" : "/login?redirect=/checkout"}
-                className="w-full text-center px-6 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all shadow-lg hover:shadow-xl min-h-[52px] flex items-center justify-center mb-3">
-                გადახდა
-              </Link>
+              {cart.deliveryFeeResolved ? (
+                <Link
+                  href={user ? "/checkout" : "/login?redirect=/checkout"}
+                  className="w-full text-center px-6 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all shadow-lg hover:shadow-xl min-h-[52px] flex items-center justify-center mb-3">
+                  გადახდა
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full text-center px-6 py-4 bg-slate-700 text-slate-400 font-bold rounded-lg border border-slate-600 min-h-[52px] flex items-center justify-center mb-3 cursor-not-allowed">
+                  {deliveryType === "pickup" ? "გადახდა" : "აირჩიეთ ქალაქი ან მდებარეობა"}
+                </button>
+              )}
               
               {/* Continue Shopping Link */}
               <Link
