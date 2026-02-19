@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { createOrderNotification, createPaymentNotification } = require('../services/notificationService');
+const { ensureHttpsImageUrls } = require('../utils/imageUrl');
 
 // Admin: Get all orders
 exports.getAllOrders = async (req, res) => {
@@ -22,18 +23,20 @@ exports.getAllOrders = async (req, res) => {
 
     const total = await Order.countDocuments(query);
 
-    res.json({
-      status: 'success',
-      data: {
-        orders,
-        pagination: {
-          currentPage: Number(page),
-          totalPages: Math.ceil(total / limit),
-          totalOrders: total,
-          hasMore: Number(page) * Number(limit) < total
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: {
+          orders,
+          pagination: {
+            currentPage: Number(page),
+            totalPages: Math.ceil(total / limit),
+            totalOrders: total,
+            hasMore: Number(page) * Number(limit) < total
+          }
         }
-      }
-    });
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -119,10 +122,12 @@ exports.updateOrderStatus = async (req, res) => {
       }
     }
 
-    res.json({
-      status: 'success',
-      data: { order }
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { order }
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -266,10 +271,12 @@ exports.createOrder = async (req, res) => {
       );
     }
 
-    res.status(201).json({
-      status: 'success',
-      data: { order: populatedOrder }
-    });
+    res.status(201).json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { order: populatedOrder }
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -299,10 +306,12 @@ exports.getUserOrders = async (req, res) => {
       .sort('-createdAt')
       .exec();
 
-    res.json({
-      status: 'success',
-      data: { orders }
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { orders }
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -338,10 +347,12 @@ exports.getOrderById = async (req, res) => {
       }
     }
 
-    res.json({
-      status: 'success',
-      data: { order }
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { order }
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',

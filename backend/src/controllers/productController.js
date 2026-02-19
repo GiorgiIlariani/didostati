@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Category = require("../models/Category");
+const { ensureHttpsImageUrls } = require("../utils/imageUrl");
 
 // Get all products with filtering, sorting, and pagination
 exports.getAllProducts = async (req, res) => {
@@ -95,18 +96,20 @@ exports.getAllProducts = async (req, res) => {
     // Get total count for pagination
     const count = await Product.countDocuments(query);
 
-    res.json({
-      status: "success",
-      data: {
-        products: productsWithSales,
-        pagination: {
-          currentPage: Number(page),
-          totalPages: Math.ceil(count / limit),
-          totalProducts: count,
-          hasMore: page * limit < count,
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: {
+          products: productsWithSales,
+          pagination: {
+            currentPage: Number(page),
+            totalPages: Math.ceil(count / limit),
+            totalProducts: count,
+            hasMore: page * limit < count,
+          },
         },
-      },
-    });
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -182,10 +185,12 @@ exports.getFeaturedProducts = async (req, res) => {
       return productObj;
     });
 
-    res.json({
-      status: "success",
-      data: { products: productsWithSales },
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: { products: productsWithSales },
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -242,10 +247,12 @@ exports.getPromotions = async (req, res) => {
       return productObj;
     });
 
-    res.json({
-      status: "success",
-      data: { products: productsWithSales },
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: { products: productsWithSales },
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -296,13 +303,15 @@ exports.searchProducts = async (req, res) => {
         .exec();
     }
 
-    res.json({
-      status: "success",
-      data: {
-        products,
-        count: products.length,
-      },
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: {
+          products,
+          count: products.length,
+        },
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -362,10 +371,12 @@ exports.getProductById = async (req, res) => {
     productObj.viewCount = (product.viewCount || 0) + 1; // Show incremented value
     productObj.soldCount = soldToday; // Show today's sales
 
-    res.json({
-      status: "success",
-      data: { product: productObj },
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: { product: productObj },
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -434,12 +445,12 @@ exports.addProductReview = async (req, res) => {
 
     await product.save();
 
-    res.status(201).json({
-      status: "success",
-      data: {
-        product,
-      },
-    });
+    res.status(201).json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: { product },
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -456,13 +467,15 @@ exports.getAdminAllProducts = async (req, res) => {
       .sort("-createdAt")
       .exec();
 
-    res.json({
-      status: "success",
-      data: {
-        products,
-        count: products.length,
-      },
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: {
+          products,
+          count: products.length,
+        },
+      })
+    );
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -492,10 +505,12 @@ exports.createProduct = async (req, res) => {
   try {
     const product = await Product.create(req.body);
 
-    res.status(201).json({
-      status: "success",
-      data: { product },
-    });
+    res.status(201).json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: { product },
+      })
+    );
   } catch (error) {
     let message = error.message;
     if (error.name === "ValidationError" && error.errors) {
@@ -529,10 +544,12 @@ exports.updateProduct = async (req, res) => {
       });
     }
 
-    res.json({
-      status: "success",
-      data: { product },
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: { product },
+      })
+    );
   } catch (error) {
     let message = error.message;
     if (error.name === "ValidationError" && error.errors) {

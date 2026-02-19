@@ -9,6 +9,7 @@
     "seed": "node src/data/seed.js",
     "create-admin": "node src/scripts/createAdmin.js",
     "delete-ads": "node src/scripts/deleteAds.js",
+    "delete-products": "node src/scripts/deleteProducts.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

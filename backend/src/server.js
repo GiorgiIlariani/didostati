@@ -12,6 +12,9 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
+// Trust proxy (Render, Heroku, etc.) so req.protocol is correct for HTTPS URLs
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 

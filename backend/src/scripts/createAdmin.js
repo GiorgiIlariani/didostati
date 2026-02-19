@@ -12,8 +12,8 @@ const createAdmin = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
-    // Find user with g@gmail.com and make them admin
-    const email = 'g@gmail.com';
+    // Find user by email and make them admin
+    const email = 'gio@gmail.com';
     const user = await User.findOne({ email: email.toLowerCase() });
     
     if (!user) {
