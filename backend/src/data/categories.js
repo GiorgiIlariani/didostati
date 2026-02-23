@@ -43,6 +43,13 @@ const categories = [
     image: '/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg',
     isActive: true
   },
+  {
+    name: 'თბოიზოლაცია',
+    slug: 'tboizolatsia',
+    description: 'თბოიზოლაციის მასალები შენობების ენერგოეფექტურობისა და კომფორტისთვის.',
+    image: '/assets/images/tboizolatsia.jpeg',
+    isActive: true
+  },
   // Subcategories (product types under parent)
   {
     name: 'ელექტრო ინსტრუმენტები',

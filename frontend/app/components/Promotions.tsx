@@ -1,8 +1,8 @@
 "use client";
 
-import { usePromotions } from '@/lib/hooks/useProducts';
-import ProductCard from './ProductCard';
-import { Loader2 } from 'lucide-react';
+import { usePromotions } from "@/lib/hooks/useProducts";
+import ProductCard from "./ProductCard";
+import { Loader2 } from "lucide-react";
 
 const Promotions = () => {
   const { products, loading, error } = usePromotions(8);

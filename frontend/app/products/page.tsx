@@ -333,17 +333,17 @@ function ProductsPageInner() {
 
         {/* Filters Panel */}
         {showFilters && (
-          <div className="mb-6 rounded-2xl bg-slate-900/80 backdrop-blur-sm p-6 shadow-xl shadow-black/20 ring-1 ring-slate-700/80">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="mb-6 rounded-2xl bg-slate-900/80 backdrop-blur-sm p-4 sm:p-6 shadow-xl shadow-black/20 ring-1 ring-slate-700/80 max-h-[85vh] overflow-y-auto overscroll-contain">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {/* Category */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   კატეგორია
                 </label>
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
+                  className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
                   <option value="">ყველა კატეგორია</option>
                   {categories.map((cat) => (
                     <option key={cat._id} value={cat._id}>
@@ -356,7 +356,7 @@ function ProductsPageInner() {
               </div>
 
               {/* Brand */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   ბრენდი
                 </label>
@@ -365,19 +365,19 @@ function ProductsPageInner() {
                   value={selectedBrand}
                   onChange={(e) => setSelectedBrand(e.target.value)}
                   placeholder="მაგ: Knauf, Bosch"
-                  className="w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
+                  className="w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
                 />
               </div>
 
               {/* Size */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   ზომა
                 </label>
                 <select
                   value={selectedSize}
                   onChange={(e) => setSelectedSize(e.target.value)}
-                  className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
+                  className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
                   <option value="">ყველა ზომა</option>
                   {filterOptions.sizes.map((s) => (
                     <option key={s} value={s}>
@@ -388,14 +388,14 @@ function ProductsPageInner() {
               </div>
 
               {/* Purpose */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   დანიშნულება
                 </label>
                 <select
                   value={selectedPurpose}
                   onChange={(e) => setSelectedPurpose(e.target.value)}
-                  className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
+                  className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
                   <option value="">ყველა დანიშნულება</option>
                   {filterOptions.purposes.map((p) => (
                     <option key={p} value={p}>
@@ -406,28 +406,28 @@ function ProductsPageInner() {
               </div>
 
               {/* Price range */}
-              <div className="space-y-1.5 lg:col-span-2">
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-2 min-w-0">
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   ფასის დიაპაზონი (₾)
                 </label>
-                <div className="flex gap-3 items-center">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center">
                   <input
                     type="number"
                     placeholder="მინ."
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
-                    className="flex-1 min-w-0 px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
+                    className="flex-1 min-w-0 min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
                   />
-                  <span className="text-slate-500 shrink-0">–</span>
+                  <span className="text-slate-500 shrink-0 self-center hidden sm:inline">–</span>
                   <input
                     type="number"
                     placeholder="მაქს."
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
-                    className="flex-1 min-w-0 px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
+                    className="flex-1 min-w-0 min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
                   />
                 </div>
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-2 pt-2 sm:pt-1">
                   {pricePresets.map((preset) => {
                     const isActive =
                       minPrice === String(preset.min) &&
@@ -446,8 +446,8 @@ function ProductsPageInner() {
                         }}
                         className={
                           isActive
-                            ? "px-3.5 py-1.5 rounded-lg text-xs font-medium bg-orange-500/20 text-orange-400 ring-1 ring-orange-500/40 transition-all"
-                            : "px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 text-slate-400 hover:text-slate-200 hover:bg-slate-700/80 ring-1 ring-slate-600/60 transition-all"
+                            ? "px-3 py-2.5 sm:px-3.5 sm:py-1.5 rounded-lg text-xs font-medium bg-orange-500/20 text-orange-400 ring-1 ring-orange-500/40 transition-all min-h-[40px] touch-manipulation"
+                            : "px-3 py-2.5 sm:px-3.5 sm:py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 text-slate-400 hover:text-slate-200 hover:bg-slate-700/80 ring-1 ring-slate-600/60 transition-all min-h-[40px] touch-manipulation"
                         }>
                         {preset.label}
                       </button>
@@ -457,7 +457,7 @@ function ProductsPageInner() {
               </div>
 
               {/* Sort + stock */}
-              <div className="space-y-3 lg:col-span-2">
+              <div className="space-y-3 sm:col-span-2 lg:col-span-2 min-w-0">
                 <div className="space-y-1.5">
                   <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                     დალაგება
@@ -465,7 +465,7 @@ function ProductsPageInner() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="filter-select w-full px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer">
+                    className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
                     <option value="">ნაგულისხმევი</option>
                     <option value="price">ფასი (ზრდადობით)</option>
                     <option value="-price">ფასი (კლებადობით)</option>
@@ -473,18 +473,27 @@ function ProductsPageInner() {
                     <option value="-createdAt">უახლესი</option>
                   </select>
                 </div>
-                <label className="inline-flex items-center gap-3 py-2 cursor-pointer group">
+                <label className="inline-flex items-center gap-3 py-2 cursor-pointer group min-h-[44px] touch-manipulation">
                   <input
                     type="checkbox"
                     checked={inStockOnly}
                     onChange={(e) => setInStockOnly(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-orange-500 focus:ring-2 focus:ring-orange-500/40 focus:ring-offset-0 cursor-pointer"
+                    className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-orange-500 focus:ring-2 focus:ring-orange-500/40 focus:ring-offset-0 cursor-pointer shrink-0"
                   />
                   <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
                     მხოლოდ მარაგში
                   </span>
                 </label>
               </div>
+            </div>
+            {/* Mobile close button */}
+            <div className="mt-4 pt-4 border-t border-slate-700/80 sm:hidden">
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="w-full py-3 rounded-xl bg-orange-500/20 text-orange-400 font-medium text-sm hover:bg-orange-500/30 transition-colors touch-manipulation">
+                დახურვა
+              </button>
             </div>
           </div>
         )}
