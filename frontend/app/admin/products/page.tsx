@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { productAPI } from "@/lib/api";
 import { useAuth } from "@/lib/context/AuthContext";
+import { isAllowedAdmin } from "@/lib/admin";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -46,14 +47,14 @@ export default function AdminProductsPage() {
       router.replace(`/login?redirect=${encodeURIComponent("/admin/products")}`);
       return;
     }
-    if (user.role !== "admin") {
+    if (!isAllowedAdmin(user)) {
       router.replace("/");
       return;
     }
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    if (authLoading || !user || user.role !== "admin") return;
+    if (authLoading || !isAllowedAdmin(user)) return;
 
     async function fetchProducts() {
       try {
@@ -94,7 +95,7 @@ export default function AdminProductsPage() {
     }
   };
 
-  if (authLoading || !user || user.role !== "admin") {
+  if (authLoading || !isAllowedAdmin(user)) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />

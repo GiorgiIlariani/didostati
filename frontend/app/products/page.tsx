@@ -20,6 +20,7 @@ import { categoryAPI, productAPI } from "@/lib/api";
 import ProductCard from "../components/ProductCard";
 import PaginationBar from "../components/PaginationBar";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { NATIVE_SELECT_CLASS } from "@/lib/nativeSelectClass";
 
 interface Category {
   _id: string;
@@ -343,7 +344,7 @@ function ProductsPageInner() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
+                  className={NATIVE_SELECT_CLASS}>
                   <option value="">ყველა კატეგორია</option>
                   {categories.map((cat) => (
                     <option key={cat._id} value={cat._id}>
@@ -377,7 +378,7 @@ function ProductsPageInner() {
                 <select
                   value={selectedSize}
                   onChange={(e) => setSelectedSize(e.target.value)}
-                  className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
+                  className={NATIVE_SELECT_CLASS}>
                   <option value="">ყველა ზომა</option>
                   {filterOptions.sizes.map((s) => (
                     <option key={s} value={s}>
@@ -395,7 +396,7 @@ function ProductsPageInner() {
                 <select
                   value={selectedPurpose}
                   onChange={(e) => setSelectedPurpose(e.target.value)}
-                  className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
+                  className={NATIVE_SELECT_CLASS}>
                   <option value="">ყველა დანიშნულება</option>
                   {filterOptions.purposes.map((p) => (
                     <option key={p} value={p}>
@@ -418,7 +419,9 @@ function ProductsPageInner() {
                     onChange={(e) => setMinPrice(e.target.value)}
                     className="flex-1 min-w-0 min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all"
                   />
-                  <span className="text-slate-500 shrink-0 self-center hidden sm:inline">–</span>
+                  <span className="text-slate-500 shrink-0 self-center hidden sm:inline">
+                    –
+                  </span>
                   <input
                     type="number"
                     placeholder="მაქს."
@@ -465,7 +468,7 @@ function ProductsPageInner() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="filter-select w-full min-h-[44px] px-4 py-3 text-sm text-slate-100 bg-slate-800/90 border border-slate-600/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500/50 transition-all cursor-pointer appearance-none">
+                    className={NATIVE_SELECT_CLASS}>
                     <option value="">ნაგულისხმევი</option>
                     <option value="price">ფასი (ზრდადობით)</option>
                     <option value="-price">ფასი (კლებადობით)</option>

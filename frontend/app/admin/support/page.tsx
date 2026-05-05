@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { adminSupportAPI } from '@/lib/api';
 import { ArrowLeft, MessageSquare, Calendar, Phone, Mail, Loader2, RefreshCw, Package, User, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { isAllowedAdmin } from '@/lib/admin';
 
 interface Product {
   _id: string;
@@ -70,7 +71,7 @@ export default function AdminSupportPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role !== 'admin') {
+    if (!isAllowedAdmin(user)) {
       router.replace('/');
       return;
     }
@@ -146,7 +147,7 @@ export default function AdminSupportPage() {
     );
   }
 
-  if (!user || user.role !== 'admin') {
+  if (!isAllowedAdmin(user)) {
     return null;
   }
 

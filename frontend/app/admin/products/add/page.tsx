@@ -7,6 +7,7 @@ import { ArrowLeft, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
+import { isAllowedAdmin } from "@/lib/admin";
 
 const BADGE_OPTIONS: FormSelectOption[] = [
   { value: "", label: "ბეიჯის გარეშე" },
@@ -52,7 +53,7 @@ export default function AddProductPage() {
       );
       return;
     }
-    if (user.role !== "admin") {
+    if (!isAllowedAdmin(user)) {
       router.replace("/");
       return;
     }

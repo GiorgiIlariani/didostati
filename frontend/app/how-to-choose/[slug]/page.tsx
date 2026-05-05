@@ -11,20 +11,17 @@ const placeholderGuides: Record<
 > = {
   saghebavebi: {
     title: "როგორ შევარჩიოთ საღებავი სწორად?",
-    excerpt:
-      "შიდა, გარე, ჭერის საღებავი — რას ვუყურებთ და როგორ ვირჩევთ.",
+    excerpt: "შიდა, გარე, ჭერის საღებავი — რას ვუყურებთ და როგორ ვირჩევთ.",
     body: "აქ მალე გამოჩნდება სრული გზამკვლევი საღებავების არჩევაზე. ვიდეო ინსტრუქციები მოგვიანებით დაემატება.",
   },
   "khis-masalebi": {
     title: "როგორ შევარჩიოთ ხის მასალები?",
-    excerpt:
-      "OSB, ფანერა, ბლოკები — დანიშნულება და ხარისხის კრიტერიუმები.",
+    excerpt: "OSB, ფანერა, ბლოკები — დანიშნულება და ხარისხის კრიტერიუმები.",
     body: "აქ მალე გამოჩნდება სრული გზამკვლევი ხის მასალების შესახებ.",
   },
   instrumentebi: {
     title: "როგორ შევარჩიოთ ინსტრუმენტები?",
-    excerpt:
-      "პროფესიონალური vs საყოფაცხოვრებო და რა ნაკრები გჭირდებათ.",
+    excerpt: "პროფესიონალური vs საყოფაცხოვრებო და რა ნაკრები გჭირდებათ.",
     body: "აქ მალე გამოჩნდება სრული გზამკვლევი ინსტრუმენტების არჩევაზე.",
   },
   santeknika: {
@@ -48,8 +45,7 @@ export default async function HowToChooseGuidePage({
       <article className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
         <Link
           href="/how-to-choose"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-orange-400 text-sm font-medium mb-8 transition-colors"
-        >
+          className="inline-flex items-center gap-2 text-slate-400 hover:text-orange-400 text-sm font-medium mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           როგორ შევარჩიო სწორად?
         </Link>

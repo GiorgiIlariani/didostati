@@ -9,7 +9,8 @@ const placeholderPosts = [
   {
     slug: "saremonto-masalebi-shesadgeneba",
     title: "სარემონტო მასალების შედგენა: რა გჭირდებათ პირველი რემონტისთვის",
-    excerpt: "მოკლე გზამკვლევი იმის შესახებ, რა მასალები უნდა აიღოთ და რა თანმიმდევრობით.",
+    excerpt:
+      "მოკლე გზამკვლევი იმის შესახებ, რა მასალები უნდა აიღოთ და რა თანმიმდევრობით.",
     date: "2025-02-01",
   },
   {
@@ -21,7 +22,8 @@ const placeholderPosts = [
   {
     slug: "santeknika-saqmebi-sakmarisi-instrumentebi",
     title: "სანტექნიკის საქმეები — საკმარისი ინსტრუმენტები",
-    excerpt: "საყოფაცხოვრებო სანტექნიკის სამუშაოებისთვის საჭირო ინსტრუმენტების სია.",
+    excerpt:
+      "საყოფაცხოვრებო სანტექნიკის სამუშაოებისთვის საჭირო ინსტრუმენტების სია.",
     date: "2025-01-08",
   },
 ];
@@ -43,7 +45,8 @@ export default function BlogPage() {
             </span>
           </h1>
           <p className="text-slate-400 text-lg max-w-xl">
-            რჩევები, გზამკვლევები და პრაქტიკული ინფორმაცია სარემონტო და სამშენებლო მასალების შესახებ.
+            რჩევები, გზამკვლევები და პრაქტიკული ინფორმაცია სარემონტო და
+            სამშენებლო მასალების შესახებ.
           </p>
         </div>
       </section>
@@ -55,8 +58,7 @@ export default function BlogPage() {
               <li key={post.slug}>
                 <Link
                   href={`/blog/${post.slug}`}
-                  className="block rounded-2xl bg-slate-800/60 border border-slate-700/80 p-6 md:p-8 hover:border-orange-500/40 hover:bg-slate-800/80 transition-all duration-200 group"
-                >
+                  className="block rounded-2xl bg-slate-800/60 border border-slate-700/80 p-6 md:p-8 hover:border-orange-500/40 hover:bg-slate-800/80 transition-all duration-200 group">
                   <div className="flex items-center gap-2 text-slate-500 text-sm mb-2">
                     <Calendar className="w-4 h-4" />
                     {new Date(post.date).toLocaleDateString("ka-GE", {

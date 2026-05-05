@@ -10,7 +10,7 @@ import { categoryAPI } from "@/lib/api";
 import { Loader2, ArrowRight } from "lucide-react";
 
 const CATEGORY_IMAGES: Record<string, string> = {
-  "khis-masalebi": "/assets/images/khis-masalebi.jpeg",
+  tboizolatsia: "/assets/images/tboizolatsia.jpeg",
   "santeknika-tsklebi": "/assets/images/santeknika-tsklebi.jpeg",
   "tabashir-muqua": "/assets/images/tabashir-muqua.jpeg",
   "mosapirketebeli-sasheni-narevebi":
@@ -18,6 +18,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   "saghebavebi-saparebi": "/assets/images/saghebavebi-saparebi.jpeg",
   "instrumentebi-samushao-khelsatsqoebi":
     "/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg",
+  "khis-masalebi": "/assets/images/khis-masalebi.jpeg",
 };
 
 interface Category {
@@ -48,7 +49,11 @@ export default function CategoriesPage() {
           setCategories(topLevel.length > 0 ? topLevel : all);
         }
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "შეცდომა კატეგორიების ჩატვირთვისას");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "შეცდომა კატეგორიების ჩატვირთვისას",
+        );
       } finally {
         setLoading(false);
       }
@@ -89,7 +94,8 @@ export default function CategoriesPage() {
           </h1>
           <p className="text-slate-400 mb-2">კატეგორიები ვერ მოიძებნა.</p>
           <p className="text-slate-500 text-sm">
-            გაუშვით seed: <code className="bg-slate-800 px-2 py-1 rounded">npm run seed</code>
+            გაუშვით seed:{" "}
+            <code className="bg-slate-800 px-2 py-1 rounded">npm run seed</code>
           </p>
         </div>
       </div>
@@ -113,13 +119,10 @@ export default function CategoriesPage() {
             <Link
               key={category._id}
               href={`/products?category=${category._id}`}
-              className="group relative rounded-2xl overflow-hidden bg-slate-800/50 border border-slate-700 hover:border-orange-500 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10"
-            >
+              className="group relative rounded-2xl overflow-hidden bg-slate-800/50 border border-slate-700 hover:border-orange-500 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10">
               <div className="aspect-4/3 relative overflow-hidden">
                 <img
-                  src={
-                    CATEGORY_IMAGES[category.slug] ?? category.image ?? ""
-                  }
+                  src={CATEGORY_IMAGES[category.slug] ?? category.image ?? ""}
                   alt={category.name}
                   className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-60 group-hover:scale-105 transition-all duration-300"
                 />

@@ -10,10 +10,10 @@ export default function Home() {
     <div className="bg-slate-900 min-h-screen">
       <Hero />
       <CategoriesGrid />
-      <Promotions />
-      <RecentlyViewed />
+      {/* <Promotions /> */}
+      {/* <RecentlyViewed /> */}
       <AdvertisementBanner position="center" />
-      <FeaturedProducts />
+      {/* <FeaturedProducts /> */}
     </div>
   );
 }

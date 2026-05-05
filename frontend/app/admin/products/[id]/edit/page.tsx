@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
+import { isAllowedAdmin } from "@/lib/admin";
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -39,14 +40,14 @@ export default function EditProductPage() {
       );
       return;
     }
-    if (user.role !== "admin") {
+    if (!isAllowedAdmin(user)) {
       router.replace("/");
       return;
     }
   }, [user, authLoading, router, id]);
 
   useEffect(() => {
-    if (authLoading || !user || user.role !== "admin" || !id) return;
+    if (authLoading || !isAllowedAdmin(user) || !id) return;
 
     async function load() {
       try {
@@ -132,7 +133,7 @@ export default function EditProductPage() {
     }
   };
 
-  if (authLoading || !user || user.role !== "admin") {
+  if (authLoading || !isAllowedAdmin(user)) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />

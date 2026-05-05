@@ -84,6 +84,13 @@ const Footer = () => {
                   მხარდაჭერა
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/shipping"
+                  className="text-slate-400 hover:text-orange-400 transition-colors text-sm">
+                  მიწოდების ფასები
+                </Link>
+              </li>
             </ul>
           </div>
 

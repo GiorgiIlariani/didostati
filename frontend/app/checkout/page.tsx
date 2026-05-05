@@ -8,6 +8,7 @@
  * - Payment method (cash, card, bank_transfer)
  * - Notes
  * - Submits order via orderAPI.create, clears cart, redirects to order details
+ * - Guest checkout: name, email, phone (backend requires all three when not logged in)
  */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,8 @@ export default function CheckoutPage() {
   const { cart, clearCart } = useCart();
 
   const [formData, setFormData] = useState({
+    name: "",
+    email: "",
     phone: "",
     city: "",
     street: "",
@@ -37,24 +40,34 @@ export default function CheckoutPage() {
   const [orderSuccess, setOrderSuccess] = useState<any>(null);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.replace("/login?redirect=/checkout");
-      return;
-    }
-  }, [user, authLoading, router]);
+    if (authLoading || !user) return;
+    setFormData((prev) => ({
+      ...prev,
+      name: prev.name || user.name || "",
+      email: prev.email || user.email || "",
+      phone: prev.phone || user.phone || "",
+    }));
+  }, [user, authLoading]);
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  /*
+   * RESTORE_CHECKOUT_REQUIRES_LOGIN — gate checkout to logged-in users only:
+   * useEffect(() => {
+   *   if (authLoading) return;
+   *   if (!user) {
+   *     router.replace("/login?redirect=/checkout");
+   *     return;
+   *   }
+   * }, [user, authLoading, router]);
+   *
+   * if (authLoading) {
+   *   return (
+   *     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+   *       <div className="animate-spin w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full" />
+   *     </div>
+   *   );
+   * }
+   * if (!user) return null;
+   */
 
   if (cart.itemCount === 0 && !orderSuccess) {
     return (
@@ -110,7 +123,6 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
 
     setSubmitting(true);
     setError("");
@@ -130,6 +142,13 @@ export default function CheckoutPage() {
         deliveryFee: cart.deliveryFee,
         deliveryType: cart.deliveryType,
         phone: formData.phone,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        customer: {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+        },
         paymentMethod: formData.paymentMethod,
         notes: formData.notes || undefined,
       };
@@ -215,6 +234,34 @@ export default function CheckoutPage() {
                 საკონტაქტო ინფორმაცია
               </h2>
               <div className="grid sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm text-slate-300 mb-1">
+                    სახელი და გვარი
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    autoComplete="name"
+                    className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-300 mb-1">
+                    ელფოსტა
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    autoComplete="email"
+                    className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
+                    required
+                  />
+                </div>
                 <div>
                   <label className="block text-sm text-slate-300 mb-1">
                     ტელეფონი
@@ -224,6 +271,7 @@ export default function CheckoutPage() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    autoComplete="tel"
                     className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
                     required
                   />
@@ -236,6 +284,14 @@ export default function CheckoutPage() {
               <h2 className="text-lg font-semibold text-slate-100 mb-3">
                 მიწოდების მისამართი
               </h2>
+              <p className="text-xs text-slate-500 mb-3">
+                მიწოდების ორიენტირებითი ფასები ქალაქის მიხედვით:{" "}
+                <Link
+                  href="/shipping"
+                  className="text-orange-400 hover:text-orange-300 underline-offset-2 hover:underline">
+                  ნახეთ სრულად
+                </Link>
+              </p>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-slate-300 mb-1">

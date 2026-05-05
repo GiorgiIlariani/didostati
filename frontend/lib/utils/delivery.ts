@@ -27,22 +27,66 @@ export const EXPRESS_FEE_EXTRA = 5;
 
 export type DeliveryType = 'standard' | 'express' | 'pickup';
 
-/** Fixed delivery fee (₾) by city. Keys normalized (lowercase). */
-const CITY_TARIFFS: Record<string, number> = {
-  'გორი': 2, 'gori': 2,
-  'თბილისი': 10, 'tbilisi': 10,
-  'ქუთაისი': 15, 'kutaisi': 15,
-  'ბათუმი': 20, 'batumi': 20,
-  'რუსთავი': 12, 'rustavi': 12,
-  'ზესტაფონი': 5, 'zestaponi': 5,
-  'მარნეული': 8, 'marneuli': 8,
-  'ბორჯომი': 8, 'borjomi': 8,
-  'ქობულეთი': 22, 'kobuleti': 22,
-  'სამტრედია': 12, 'samtredia': 12,
-  'ფოთი': 18, 'poti': 18,
-  'თელავი': 14, 'telavi': 14,
-  'მცხეთა': 8, 'mtskheta': 8,
+/** City row for /shipping wizard (რუკაზე lat/lng + ტარიფები). */
+export type ShippingWizardCity = {
+  id: string;
+  name: string;
+  /** გეოგრაფიული კოორდინატები — მიწოდების გვერდზე რუკაზე (Leaflet / OSM) */
+  lat: number;
+  lng: number;
+  feeSmallTruck: number;
+  feeBigTruck: number;
 };
+
+/**
+ * ქალაქები მიწოდების კალკულატორისთვის.
+ * Checkout-ში გამოიყენება feeSmallTruck (პატარა მანქანა).
+ */
+export const SHIPPING_WIZARD_CITIES: ShippingWizardCity[] = [
+  { id: "zugdidi", name: "ზუგდიდი", lat: 42.5088, lng: 41.8709, feeSmallTruck: 280, feeBigTruck: 390 },
+  { id: "poti", name: "ფოთი", lat: 42.1462, lng: 41.6718, feeSmallTruck: 230, feeBigTruck: 320 },
+  { id: "kutaisi", name: "ქუთაისი", lat: 42.2679, lng: 42.6946, feeSmallTruck: 200, feeBigTruck: 280 },
+  { id: "batumi", name: "ბათუმი", lat: 41.6423, lng: 41.6339, feeSmallTruck: 400, feeBigTruck: 560 },
+  { id: "khashuri", name: "ხაშური", lat: 41.9941, lng: 43.5991, feeSmallTruck: 85, feeBigTruck: 118 },
+  { id: "gori", name: "გორი", lat: 41.985, lng: 44.1098, feeSmallTruck: 30, feeBigTruck: 45 },
+  { id: "telavi", name: "თელავი", lat: 41.9197, lng: 45.4732, feeSmallTruck: 150, feeBigTruck: 210 },
+  { id: "mtskheta", name: "მცხეთა", lat: 41.8451, lng: 44.7186, feeSmallTruck: 70, feeBigTruck: 100 },
+  { id: "tbilisi", name: "თბილისი", lat: 41.7151, lng: 44.8271, feeSmallTruck: 50, feeBigTruck: 72 },
+  { id: "rustavi", name: "რუსთავი", lat: 41.5495, lng: 45.0111, feeSmallTruck: 150, feeBigTruck: 75 },
+];
+
+/**
+ * Main city delivery rates (₾) — პატარა მანქანა; კალათა/ჩექაუთის სია.
+ * ემთხვევა SHIPPING_WIZARD_CITIES-ს.
+ */
+export const DELIVERY_RATES_GUIDE: { name: string; fromGel: number }[] = [
+  ...SHIPPING_WIZARD_CITIES,
+]
+  .slice()
+  .sort((a, b) => a.feeSmallTruck - b.feeSmallTruck)
+  .map(({ name, feeSmallTruck }) => ({ name, fromGel: feeSmallTruck }));
+
+/** Fixed delivery fee (₾) by city. Keys: ქართული სახელი + id + ლათინური ალიასები. */
+const CITY_TARIFFS: Record<string, number> = (() => {
+  const m: Record<string, number> = {};
+  for (const c of SHIPPING_WIZARD_CITIES) {
+    m[c.name] = c.feeSmallTruck;
+    m[c.id] = c.feeSmallTruck;
+  }
+  Object.assign(m, {
+    gori: 30,
+    tbilisi: 50,
+    kutaisi: 200,
+    batumi: 400,
+    mtskheta: 70,
+    telavi: 150,
+    rustavi: 150,
+    zugdidi: 280,
+    poti: 230,
+    khashuri: 85,
+  });
+  return m;
+})();
 
 function normalizeCity(name: string): string {
   return (name || '').trim().toLowerCase();
@@ -58,13 +102,9 @@ export function getDeliveryFeeForCity(cityName: string): number | null {
   return null;
 }
 
-/** Cities with fixed tariffs for dropdown (name + fee) */
-export const DELIVERY_CITIES: { name: string; fee: number }[] = [
-  { name: 'გორი', fee: 2 }, { name: 'თბილისი', fee: 10 }, { name: 'ქუთაისი', fee: 15 },
-  { name: 'ბათუმი', fee: 20 }, { name: 'რუსთავი', fee: 12 }, { name: 'მცხეთა', fee: 8 },
-  { name: 'ზესტაფონი', fee: 5 }, { name: 'მარნეული', fee: 8 }, { name: 'ბორჯომი', fee: 8 },
-  { name: 'სამტრედია', fee: 12 }, { name: 'ფოთი', fee: 18 }, { name: 'ქობულეთი', fee: 22 }, { name: 'თელავი', fee: 14 },
-];
+/** Cities with fixed tariffs for dropdown (same set as DELIVERY_RATES_GUIDE) */
+export const DELIVERY_CITIES: { name: string; fee: number }[] =
+  DELIVERY_RATES_GUIDE.map(({ name, fromGel }) => ({ name, fee: fromGel }));
 
 /** Haversine distance in km between two lat/lng points */
 export function getDistanceKm(

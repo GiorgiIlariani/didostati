@@ -163,7 +163,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (prefs) {
         const p = JSON.parse(prefs);
         if (p.deliveryType) setDeliveryTypeState(p.deliveryType);
-        if (p.deliveryCity) setDeliveryCityState(p.deliveryCity);
+        if (p.deliveryCity) {
+          if (getDeliveryFeeForCity(p.deliveryCity) != null) {
+            setDeliveryCityState(p.deliveryCity);
+          } else {
+            const cleaned = { ...p, deliveryCity: "" };
+            localStorage.setItem(
+              DELIVERY_PREFS_KEY,
+              JSON.stringify(cleaned),
+            );
+          }
+        }
       }
     } catch (e) {
       console.error("Failed to load cart from localStorage", e);

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { adminOrderAPI } from '@/lib/api';
 import { ArrowLeft, Package, Calendar, MapPin, Phone, Mail, Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { isAllowedAdmin } from '@/lib/admin';
 
 interface OrderItem {
   product?: {
@@ -86,7 +87,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role !== 'admin') {
+    if (!isAllowedAdmin(user)) {
       router.replace('/');
       return;
     }
@@ -155,7 +156,7 @@ export default function AdminOrdersPage() {
     );
   }
 
-  if (!user || user.role !== 'admin') {
+  if (!isAllowedAdmin(user)) {
     return null;
   }
 

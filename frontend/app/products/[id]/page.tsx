@@ -13,7 +13,7 @@
  * - Basic product info only (keep it simple)
  */
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { productAPI, supportAPI, reviewAPI } from "@/lib/api";
@@ -21,6 +21,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { useCart } from "@/lib/context/CartContext";
 import { useWishlist } from "@/lib/context/WishlistContext";
 import ProductCard from "@/app/components/ProductCard";
+import ContactQuickActions from "@/app/components/ContactQuickActions";
 import {
   ShoppingCart,
   Heart,
@@ -34,6 +35,7 @@ import {
   PlusCircle,
   Eye,
   TrendingUp,
+  MessageCircle,
 } from "lucide-react";
 
 interface Product {
@@ -71,7 +73,6 @@ interface Product {
 
 export default function ProductDetailsPage() {
   const params = useParams();
-  const router = useRouter();
   const { cart, addToCart, isInCart, getItemQuantity } = useCart();
   const { user } = useAuth();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -243,10 +244,14 @@ export default function ProductDetailsPage() {
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      router.push(`/login?redirect=/products/${params.id}`);
-      return;
-    }
+    if (!user) return;
+    /*
+     * RESTORE_LOGIN_REVIEWS — require login before submit (needs useRouter + params in scope):
+     * if (!user) {
+     *   router.push(`/login?redirect=/products/${params.id}`);
+     *   return;
+     * }
+     */
     if (!product) return;
     if (!reviewComment.trim()) {
       setReviewError("გთხოვთ დაწეროთ კომენტარი.");
@@ -310,7 +315,9 @@ export default function ProductDetailsPage() {
       )
     : 0;
 
-  const mainImage = product.images[selectedImage]?.url || "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&h=600&fit=crop";
+  const mainImage =
+    product.images[selectedImage]?.url ||
+    "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&h=600&fit=crop";
 
   return (
     <div className="min-h-screen bg-slate-900 py-8">
@@ -352,7 +359,10 @@ export default function ProductDetailsPage() {
                 className="object-cover"
                 priority
                 sizes="(max-width: 1024px) 100vw, 50vw"
-                unoptimized={mainImage.startsWith("http://localhost") || mainImage.startsWith("https://localhost")}
+                unoptimized={
+                  mainImage.startsWith("http://localhost") ||
+                  mainImage.startsWith("https://localhost")
+                }
               />
             </div>
 
@@ -374,7 +384,10 @@ export default function ProductDetailsPage() {
                       fill
                       className="object-cover"
                       sizes="120px"
-                      unoptimized={img.url.startsWith("http://localhost") || img.url.startsWith("https://localhost")}
+                      unoptimized={
+                        img.url.startsWith("http://localhost") ||
+                        img.url.startsWith("https://localhost")
+                      }
                     />
                   </button>
                 ))}
@@ -562,7 +575,7 @@ export default function ProductDetailsPage() {
             </div>
 
             {/* Features */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <div className="flex items-start gap-3 p-4 bg-slate-800 rounded-lg border border-slate-700">
                 <Truck className="w-6 h-6 text-orange-400 shrink-0 mt-1" />
                 <div>
@@ -594,61 +607,79 @@ export default function ProductDetailsPage() {
                   </p>
                 </div>
               </div>
-            </div>
+            </div> */}
 
-            {/* Consultation form */}
-            <div className="mt-4 p-4 md:p-5 bg-slate-800 rounded-lg border border-slate-700 mb-6">
-              <h3 className="text-lg font-semibold text-slate-100 mb-2">
-                გჭირდებათ კონსულტაცია ამ პროდუქტზე?
-              </h3>
-              <p className="text-slate-400 text-sm mb-4">
-                დატოვეთ თქვენი კონტაქტი და შეკითხვა, და დაგირეკავთ/მოგწერთ
-                დეტალების დასაზუსტებლად.
-              </p>
+            <div className="mt-2 rounded-xl border border-slate-700 bg-slate-800/60 p-5 sm:p-6 mb-8">
+              <div className="flex items-start gap-3 mb-5 pb-5 border-b border-slate-700/80">
+                <MessageCircle
+                  className="w-5 h-5 text-slate-500 shrink-0 mt-0.5"
+                  aria-hidden
+                />
+                <div className="min-w-0">
+                  <h3 className="text-base font-semibold text-slate-100">
+                    გჭირდებათ კონსულტაცია ამ პროდუქტზე?
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                    ზარი, WhatsApp ან ფორმა — როგორც თქვენთვის ხელსაყრელია.
+                  </p>
+                </div>
+              </div>
+
+              <ContactQuickActions
+                whatsappMessage={`გამარჯობა, მაინტერესებს „${product.name}“ — Didostati.`}
+                className="mb-5"
+              />
+
+              <p className="text-xs text-slate-500 mb-3">ან დატოვეთ მოთხოვნა</p>
+
               {consultSuccess && (
-                <p className="mb-3 text-sm text-emerald-400">
+                <p className="mb-3 text-sm text-emerald-400/90 px-3 py-2 rounded-lg bg-emerald-500/8 border border-emerald-500/20">
                   {consultSuccess}
                 </p>
               )}
               {consultError && (
-                <p className="mb-3 text-sm text-red-400">{consultError}</p>
+                <p className="mb-3 text-sm text-red-400/90 px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
+                  {consultError}
+                </p>
               )}
-              <form
-                onSubmit={handleConsultSubmit}
-                className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder="თქვენი სახელი"
-                  value={consultName}
-                  onChange={(e) => setConsultName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-orange-500 outline-none"
-                />
-                <input
-                  type="tel"
-                  placeholder="ტელეფონი"
-                  value={consultPhone}
-                  onChange={(e) => setConsultPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-orange-500 outline-none"
-                />
+              <form onSubmit={handleConsultSubmit} className="space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input
+                    type="text"
+                    placeholder="სახელი"
+                    value={consultName}
+                    onChange={(e) => setConsultName(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg bg-slate-900/50 border border-slate-700 text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500/40 focus:border-orange-500/35"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="ტელეფონი"
+                    value={consultPhone}
+                    onChange={(e) => setConsultPhone(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg bg-slate-900/50 border border-slate-700 text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500/40 focus:border-orange-500/35"
+                  />
+                </div>
                 <textarea
-                  placeholder="თქვენი კითხვა / რა გჭირდებათ"
+                  placeholder="კითხვა / რა გჭირდებათ"
                   value={consultMessage}
                   onChange={(e) => setConsultMessage(e.target.value)}
-                  className="md:col-span-2 w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-orange-500 outline-none min-h-[80px]"
+                  className="w-full px-3 py-2.5 rounded-lg bg-slate-900/50 border border-slate-700 text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500/40 focus:border-orange-500/35 min-h-[80px] resize-y"
                 />
-                <div className="md:col-span-2 flex justify-end">
+                <div className="flex justify-end pt-1">
                   <button
                     type="submit"
                     disabled={consultSending}
-                    className="px-5 py-2.5 rounded-lg bg-linear-to-r from-orange-500 to-yellow-500 text-white text-sm font-semibold hover:from-orange-600 hover:to-yellow-600 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
-                    {consultSending ? "გაგზავნა..." : "კონსულტაციის მოთხოვნა"}
+                    className="px-5 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    {consultSending
+                      ? "გაგზავნა..."
+                      : "კონსულტაციის მოთხოვნა"}
                   </button>
                 </div>
               </form>
             </div>
 
             {/* Reviews */}
-            <div className="p-4 md:p-5 bg-slate-800 rounded-lg border border-slate-700">
+            {/* <div className="p-4 md:p-5 bg-slate-800 rounded-lg border border-slate-700">
               <h3 className="text-lg font-semibold text-slate-100 mb-3">
                 მომხმარებლის შეფასებები
               </h3>
@@ -690,16 +721,21 @@ export default function ProductDetailsPage() {
               <div className="mt-2">
                 {!user ? (
                   <p className="text-slate-400 text-sm">
-                    შეფასების დასაწერად{" "}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        router.push(`/login?redirect=/products/${product._id}`)
-                      }
-                      className="text-orange-400 hover:text-orange-300 underline underline-offset-2">
-                      შედით სისტემაში
-                    </button>
-                    .
+                    ამ ეტაპზე შეფასების დატოვება გამორთულია — საიტი მუშაობს
+                    კატალოგის რეჟიმში.
+                    {/*
+                      RESTORE_LOGIN_REVIEWS — replace catalog copy with login CTA (needs useRouter from "next/navigation"):
+                      შეფასების დასაწერად{" "}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.push(`/login?redirect=/products/${product._id}`)
+                        }
+                        className="text-orange-400 hover:text-orange-300 underline underline-offset-2">
+                        შედით სისტემაში
+                      </button>
+                      .
+                   
                   </p>
                 ) : (
                   <form
@@ -741,6 +777,7 @@ export default function ProductDetailsPage() {
                 )}
               </div>
             </div>
+             */}
           </div>
         </div>
 

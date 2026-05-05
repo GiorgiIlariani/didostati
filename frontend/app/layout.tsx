@@ -43,7 +43,7 @@ export default function RootLayout({
                 <Navbar />
                 <main className="min-h-screen">{children}</main>
                 <Footer />
-                {/* <FloatingContact /> */}
+                <FloatingContact />
                 {/* <ApiStatus /> */}
                 <AdminNav />
               </NotificationProvider>

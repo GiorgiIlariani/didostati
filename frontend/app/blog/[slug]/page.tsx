@@ -11,7 +11,8 @@ const placeholderPosts: Record<
 > = {
   "saremonto-masalebi-shesadgeneba": {
     title: "სარემონტო მასალების შედგენა: რა გჭირდებათ პირველი რემონტისთვის",
-    excerpt: "მოკლე გზამკვლევი იმის შესახებ, რა მასალები უნდა აიღოთ და რა თანმიმდევრობით.",
+    excerpt:
+      "მოკლე გზამკვლევი იმის შესახებ, რა მასალები უნდა აიღოთ და რა თანმიმდევრობით.",
     date: "2025-02-01",
     body: "აქ მალე გამოჩნდება სრული სტატიის ტექსტი. შეგიძლიათ დაგვიკავშირდეთ, თუ გსურთ კონკრეტული თემის გაშუქება.",
   },
@@ -23,7 +24,8 @@ const placeholderPosts: Record<
   },
   "santeknika-saqmebi-sakmarisi-instrumentebi": {
     title: "სანტექნიკის საქმეები — საკმარისი ინსტრუმენტები",
-    excerpt: "საყოფაცხოვრებო სანტექნიკის სამუშაოებისთვის საჭირო ინსტრუმენტების სია.",
+    excerpt:
+      "საყოფაცხოვრებო სანტექნიკის სამუშაოებისთვის საჭირო ინსტრუმენტების სია.",
     date: "2025-01-08",
     body: "აქ მალე გამოჩნდება სრული სტატიის ტექსტი.",
   },
@@ -43,8 +45,7 @@ export default async function BlogPostPage({
       <article className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8 py-12 md:py-16">
         <Link
           href="/blog"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-orange-400 text-sm font-medium mb-8 transition-colors"
-        >
+          className="inline-flex items-center gap-2 text-slate-400 hover:text-orange-400 text-sm font-medium mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           ბლოგი
         </Link>
