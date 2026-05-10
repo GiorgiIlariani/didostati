@@ -238,9 +238,9 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu — z-50 so links receive clicks above the z-40 backdrop */}
       {showMobileMenu && (
-        <div className="md:hidden bg-slate-800 border-b border-slate-700 shadow-lg">
+        <div className="relative z-50 md:hidden bg-slate-800 border-b border-slate-700 shadow-lg">
           <div className="px-4 py-3 space-y-2">
             <Link
               href="/"
