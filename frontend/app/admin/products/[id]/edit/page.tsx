@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { productAPI, categoryAPI } from "@/lib/api";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
@@ -17,6 +17,9 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [imageUrl, setImageUrl] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -91,6 +94,40 @@ export default function EditProductPage() {
 
     load();
   }, [user, authLoading, id, router]);
+
+  const setImageFromFileOrBlob = useCallback(
+    async (file: File | Blob, filename?: string) => {
+      setImageError("");
+      setImageUploading(true);
+      try {
+        const { url } = await productAPI.uploadImage(file, filename);
+        setImageUrl(url);
+      } catch (e: any) {
+        const msg = e?.message || "";
+        const isAuthError =
+          /authorized|log in|session expired|invalid token/i.test(msg);
+        setImageError(
+          isAuthError
+            ? "სურათის ატვირთვა მოითხოვს ადმინისტრატორის შესვლას."
+            : msg || "ატვირთვა ვერ მოხერხდა",
+        );
+      } finally {
+        setImageUploading(false);
+      }
+    },
+    [],
+  );
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setImageError("გთხოვთ აირჩიოთ სურათი (JPEG, PNG, GIF, WebP).");
+      return;
+    }
+    setImageFromFileOrBlob(file);
+    e.target.value = "";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -346,15 +383,55 @@ export default function EditProductPage() {
 
             <div>
               <label className="block text-slate-300 font-semibold mb-2">
-                Product Image URL
+                პროდუქტის სურათი
               </label>
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
-                placeholder="https://images.unsplash.com/photo-..."
-              />
+              <div className="rounded-xl border-2 border-dashed border-slate-600 bg-slate-900/50 p-4">
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  <div className="shrink-0 w-32 h-32 rounded-lg bg-slate-800 overflow-hidden border border-slate-700 flex items-center justify-center">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-slate-500 text-sm">
+                        სურათი არ არის
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="hidden"
+                      onChange={onFileChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={imageUploading}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
+                      <Upload className="w-4 h-4" />
+                      {imageUploading ? "იტვირთება…" : "სურათის ატვირთვა"}
+                    </button>
+                    {imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl("")}
+                        className="text-slate-400 hover:text-slate-200 text-sm"
+                        aria-label="სურათის წაშლა">
+                        <X className="w-4 h-4 inline mr-1" />
+                        წაშლა
+                      </button>
+                    )}
+                    {imageError && (
+                      <p className="text-red-400 text-sm">{imageError}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-6">
