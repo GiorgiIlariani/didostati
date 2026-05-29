@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Category = require("../models/Category");
-const { ensureHttpsImageUrls } = require("../utils/imageUrl");
+const { ensureHttpsImageUrls, getPublicBaseUrl } = require("../utils/imageUrl");
 
 // Get all products with filtering, sorting, and pagination
 exports.getAllProducts = async (req, res) => {
@@ -492,7 +492,7 @@ exports.uploadProductImage = (req, res) => {
       message: 'No file uploaded. Use field name "image".',
     });
   }
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const baseUrl = getPublicBaseUrl(req);
   const url = `${baseUrl}/uploads/products/${req.file.filename}`;
   res.status(200).json({
     status: "success",

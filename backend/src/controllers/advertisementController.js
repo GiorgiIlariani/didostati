@@ -1,5 +1,6 @@
 const Advertisement = require('../models/Advertisement');
 const path = require('path');
+const { getPublicBaseUrl } = require('../utils/imageUrl');
 
 // Upload media (image/video) for advertisements – returns public URL
 exports.uploadMedia = async (req, res) => {
@@ -10,7 +11,7 @@ exports.uploadMedia = async (req, res) => {
         message: 'No file uploaded'
       });
     }
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = getPublicBaseUrl(req);
     const url = `${baseUrl}/uploads/advertisements/${req.file.filename}`;
     res.status(200).json({
       status: 'success',
@@ -89,7 +90,7 @@ exports.uploadAdvertisementMedia = (req, res) => {
       message: 'No file uploaded. Use field name "media".'
     });
   }
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const baseUrl = getPublicBaseUrl(req);
   const url = `${baseUrl}/uploads/advertisements/${req.file.filename}`;
   res.status(200).json({
     status: 'success',
