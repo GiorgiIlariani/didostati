@@ -58,11 +58,11 @@ const categories = [
     isActive: true,
   },
   {
-    name: "რკინის მასალა",
-    slug: "rkinis-masala",
+    name: "რკინა",
+    slug: "rkinis-kategoria",
     description:
-      "ლითონის პროფილები, არმატურა, თუნუქი და სხვა რკინის მასალები სამშენებლო და სარემონტო სამუშაოებისთვის.",
-    image: "/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg",
+      "ლითონის პროფილები, არმატურა, თუნუქი, მავთულის ბადე და სხვა რკინის მასალები სამშენებლო და სარემონტო სამუშაოებისთვის.",
+    image: "/assets/images/rkinis-kategoria.jpeg",
     isActive: true,
   },
   // Subcategories (product types under parent)

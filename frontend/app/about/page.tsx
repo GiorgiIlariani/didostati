@@ -24,11 +24,11 @@ export default function AboutPage() {
           <section className="flex flex-col md:flex-row items-center gap-8">
             <div className="relative shrink-0">
               <Image
-                src="/assets/images/623751947_122121815517039514_5435805212431744753_n.jpg"
+                src="/assets/images/didostati-logo.jpeg"
                 alt="Didostati"
                 width={200}
                 height={200}
-                className="rounded-2xl object-cover ring-2 ring-orange-500/50"
+                className="rounded-2xl object-contain ring-2 ring-orange-500/50"
               />
             </div>
             <div>

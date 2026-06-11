@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { categoryAPI } from "@/lib/api";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 // Your category images (by slug) from public/assets/images/
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -16,6 +16,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   "instrumentebi-samushao-khelsatsqoebi":
     "/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg",
   "khis-masalebi": "/assets/images/khis-masalebi.jpeg",
+  "rkinis-kategoria": "/assets/images/rkinis-kategoria.jpeg",
 };
 
 const CategoriesGrid = () => {
@@ -60,7 +61,7 @@ const CategoriesGrid = () => {
   }
 
   return (
-    <section className="py-16 bg-slate-950">
+    <section className="py-10 md:py-16 bg-slate-950">
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-10">
@@ -82,29 +83,21 @@ const CategoriesGrid = () => {
               key={category._id}
               href={`/products?category=${category._id}`}
               className="group relative aspect-square w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-700 hover:border-orange-500 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/20">
-              {/* Image - native img so local paths with spaces work */}
               <img
                 src={CATEGORY_IMAGES[category.slug] ?? category.image ?? ""}
                 alt={category.name}
-                className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-50 group-hover:scale-110 transition-all duration-300"
+                className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-60 group-hover:scale-110 transition-all duration-300"
               />
-              {/* Overlay - inline gradient so it works in all Tailwind versions */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background:
-                    "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)",
-                }}
-              />
-              {/* Content */}
-              <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                <h3 className="text-white font-bold text-sm leading-tight mb-1 group-hover:text-orange-400 transition-colors">
+              <div className="absolute inset-0 pointer-events-none bg-black/25 group-hover:bg-black/35 transition-colors duration-300" />
+              <div className="absolute inset-0 flex items-center justify-center p-3">
+                <h3
+                  className="text-center font-bold text-sm leading-snug text-white line-clamp-3"
+                  style={{
+                    textShadow:
+                      "0 2px 16px rgba(0,0,0,1), 0 0 32px rgba(0,0,0,0.9), 0 1px 4px rgba(0,0,0,1)",
+                  }}>
                   {category.name}
                 </h3>
-                <div className="flex items-center text-orange-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span>ნახე</span>
-                  <ArrowRight className="w-3 h-3 ml-1" />
-                </div>
               </div>
             </Link>
           ))}

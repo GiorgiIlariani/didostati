@@ -54,14 +54,13 @@ const AdminNav = () => {
                 <Plus className="w-5 h-5 text-orange-400" />
                 <span className="font-medium">Add Product</span>
               </Link>
-              {/* <Link
-                href="/admin/advertisements/add"
+              <Link
+                href="/admin/hero"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]"
-              >
+                className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
                 <Video className="w-5 h-5 text-yellow-400" />
-                <span className="font-medium">Add Advertisement</span>
-              </Link> */}
+                <span className="font-medium">Hero სლაიდები</span>
+              </Link>
               {/* <Link
                 href="/admin/advertisements"
                 onClick={() => setIsOpen(false)}

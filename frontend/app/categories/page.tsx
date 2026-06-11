@@ -19,6 +19,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   "instrumentebi-samushao-khelsatsqoebi":
     "/assets/images/instrumentebi-samushao-khelsatsqoebi.jpeg",
   "khis-masalebi": "/assets/images/khis-masalebi.jpeg",
+  "rkinis-kategoria": "/assets/images/rkinis-kategoria.jpeg",
 };
 
 interface Category {

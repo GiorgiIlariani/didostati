@@ -7,6 +7,9 @@ const { upload } = require('../middleware/uploadMiddleware');
 // Get all advertisements (optionally filter by position)
 router.get('/', advertisementController.getAllAdvertisements);
 
+// Admin: get all advertisements including inactive – must be before /:id
+router.get('/admin/all', protect, restrictTo('admin'), advertisementController.getAdminAdvertisements);
+
 // Upload media (image/video) - must be before /:id
 router.post('/upload', protect, restrictTo('admin'), upload.single('media'), advertisementController.uploadAdvertisementMedia);
 

@@ -25,6 +25,30 @@ exports.uploadMedia = async (req, res) => {
   }
 };
 
+// Get all advertisements for admin (includes inactive)
+exports.getAdminAdvertisements = async (req, res) => {
+  try {
+    const { position } = req.query;
+    const query = {};
+    if (position) {
+      query.position = position;
+    }
+
+    const advertisements = await Advertisement.find(query)
+      .sort('-priority -createdAt');
+
+    res.json({
+      status: 'success',
+      data: { advertisements }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
 // Get all active advertisements
 exports.getAllAdvertisements = async (req, res) => {
   try {

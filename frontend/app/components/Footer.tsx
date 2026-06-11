@@ -22,11 +22,11 @@ const Footer = () => {
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-3 group">
               <Image
-                src="/assets/images/623751947_122121815517039514_5435805212431744753_n.jpg"
+                src="/assets/images/didostati-logo.jpeg"
                 alt="Didostati Logo"
                 width={40}
                 height={40}
-                className="w-10 h-10 rounded-full object-cover ring-2 ring-orange-400/30 group-hover:ring-orange-500 transition-all"
+                className="w-10 h-10 rounded-lg object-contain ring-2 ring-orange-400/30 group-hover:ring-orange-500 transition-all"
               />
               <div>
                 <p className="text-lg font-bold bg-linear-to-r from-orange-500 to-yellow-400 bg-clip-text text-transparent">

@@ -48,11 +48,11 @@ const Navbar = () => {
           <div className="relative">
             <div className="absolute inset-0 bg-linear-to-r from-orange-400 to-yellow-400 rounded-full blur-md opacity-30"></div>
             <Image
-              src="/assets/images/623751947_122121815517039514_5435805212431744753_n.jpg"
+              src="/assets/images/didostati-logo.jpeg"
               alt="Didostati Logo"
               width={40}
               height={40}
-              className="relative w-8 h-8 md:w-10 md:h-10 rounded-full object-cover ring-2 ring-orange-400/50"
+              className="relative w-8 h-8 md:w-10 md:h-10 rounded-lg object-contain ring-2 ring-orange-400/50"
             />
           </div>
           <div className="hidden sm:block">

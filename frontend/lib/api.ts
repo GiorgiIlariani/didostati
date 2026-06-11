@@ -263,10 +263,16 @@ export const wishlistAPI = {
 
 // Advertisement API calls
 export const advertisementAPI = {
-  // Get all advertisements with optional position filter
+  // Get all active advertisements with optional position filter
   getAll: async (position?: string) => {
     const query = position ? `?position=${position}` : '';
     return apiRequest(`/advertisements${query}`);
+  },
+
+  // Get all advertisements for admin (includes inactive)
+  getAdminAll: async (position?: string) => {
+    const query = position ? `?position=${position}` : '';
+    return apiRequest(`/advertisements/admin/all${query}`);
   },
 
   // Get single advertisement

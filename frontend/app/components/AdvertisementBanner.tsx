@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { X, ExternalLink } from 'lucide-react';
+import { advertisementAPI } from '@/lib/api';
 
 interface Advertisement {
   _id: string;
@@ -27,10 +28,9 @@ const AdvertisementBanner = ({ position }: AdvertisementBannerProps) => {
   useEffect(() => {
     async function fetchAds() {
       try {
-        const response = await fetch(`http://localhost:5001/api/advertisements?position=${position}`);
-        const data = await response.json();
-        if (data.status === 'success') {
-          setAds(data.data.advertisements);
+        const response = await advertisementAPI.getAll(position);
+        if (response.status === 'success') {
+          setAds(response.data.advertisements);
         }
       } catch (error) {
         console.error('Failed to load advertisements:', error);
