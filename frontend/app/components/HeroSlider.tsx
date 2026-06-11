@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Package, Clock } from "lucide-react";
 import { advertisementAPI } from "@/lib/api";
-import HeroMediaFrame from "./HeroMediaFrame";
-
 interface HeroSlide {
   _id: string;
   title: string;
@@ -52,8 +50,7 @@ const HeroSlider = () => {
   const goTo = (index: number) => changeSlide(index);
   const goPrev = () =>
     changeSlide((currentIndex - 1 + slides.length) % slides.length);
-  const goNext = () =>
-    changeSlide((currentIndex + 1) % slides.length);
+  const goNext = () => changeSlide((currentIndex + 1) % slides.length);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -86,21 +83,34 @@ const HeroSlider = () => {
   const renderSlideMedia = () => {
     if (!currentSlide) return null;
 
-    const mediaType = currentSlide.type === "image" ? "image" : "video";
+    const fadeClass = `transition-opacity duration-300 ${
+      fading ? "opacity-0" : "opacity-100"
+    }`;
+    const mediaClass = "block w-full h-auto";
 
     return (
       <div
         key={currentSlide._id}
-        className={`transition-opacity duration-300 ${
-          fading ? "opacity-0" : "opacity-100"
-        }`}>
-        <HeroMediaFrame
-          src={currentSlide.mediaUrl}
-          type={mediaType}
-          alt={currentSlide.title}
-          variant="hero"
-          className="rounded-xl sm:rounded-2xl"
-        />
+        className={`rounded-xl border border-slate-700/80 p-1 sm:rounded-2xl sm:p-1.5 ${fadeClass}`}>
+        <div className="overflow-hidden rounded-lg sm:rounded-xl">
+          {currentSlide.type === "image" ? (
+            <img
+              src={currentSlide.mediaUrl}
+              alt={currentSlide.title}
+              className={mediaClass}
+            />
+          ) : (
+            <video
+              src={currentSlide.mediaUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className={mediaClass}
+              aria-label={currentSlide.title}
+            />
+          )}
+        </div>
       </div>
     );
   };
@@ -141,10 +151,7 @@ const HeroSlider = () => {
 
   return (
     <div className="relative">
-      <div
-        className="overflow-hidden rounded-xl border border-slate-700/80 bg-slate-900/60 p-1 shadow-lg backdrop-blur-sm sm:rounded-2xl sm:p-1.5 sm:shadow-2xl md:p-2"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}>
+      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         {renderSlideMedia()}
       </div>
 

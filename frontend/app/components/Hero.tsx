@@ -22,10 +22,10 @@ const Hero = () => {
       <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl"></div>
 
-      <div className="relative max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-5 sm:py-10 md:py-24 lg:py-32">
+      <div className="relative max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-5 pb-0 sm:py-10 md:py-24 lg:py-32">
         <div className="grid lg:grid-cols-2 gap-3 sm:gap-8 lg:gap-12 items-center">
           {/* Text Content */}
-          <div className="order-2 space-y-8 text-center lg:order-1 lg:text-left">
+          <div className="order-2 space-y-5 sm:space-y-6 text-center lg:order-1 lg:text-left">
             <div className="hidden lg:inline-flex items-center gap-2 px-4 py-2 bg-orange-500/10 border border-orange-500/30 rounded-full">
               <Truck className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-orange-400">
@@ -33,8 +33,8 @@ const Hero = () => {
               </span>
             </div>
 
-            <h1 className="text-xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight">
-              <span className="block text-slate-100 mb-2">
+            <h1 className="text-xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-[1.2]">
+              <span className="block text-slate-100">
                 პლატფორმა რომელიც რემონტის სირთულეს
               </span>
               <span className="block bg-linear-to-r from-orange-500 via-orange-400 to-yellow-400 bg-clip-text text-transparent">
@@ -43,7 +43,7 @@ const Hero = () => {
               <span className="block text-slate-100">პროცესად აქცევს</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto lg:mx-0">
+            <p className="text-lg md:text-xl text-slate-300 leading-snug max-w-2xl mx-auto lg:mx-0">
               ყველაზე მარტივი რემონტი
             </p>
 
@@ -85,7 +85,7 @@ const Hero = () => {
           </div>
 
           {/* Media */}
-          <div className="relative order-1 mx-auto w-full max-w-[280px] sm:max-w-none lg:order-2 lg:mx-0">
+          <div className="relative order-1 w-full lg:order-2">
             <HeroSlider />
           </div>
         </div>
