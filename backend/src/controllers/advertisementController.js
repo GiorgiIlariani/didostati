@@ -1,6 +1,6 @@
 const Advertisement = require('../models/Advertisement');
 const path = require('path');
-const { getPublicBaseUrl } = require('../utils/imageUrl');
+const { ensureHttpsImageUrls, getPublicBaseUrl } = require('../utils/imageUrl');
 
 // Upload media (image/video) for advertisements – returns public URL
 exports.uploadMedia = async (req, res) => {
@@ -13,10 +13,12 @@ exports.uploadMedia = async (req, res) => {
     }
     const baseUrl = getPublicBaseUrl(req);
     const url = `${baseUrl}/uploads/advertisements/${req.file.filename}`;
-    res.status(200).json({
-      status: 'success',
-      data: { url }
-    });
+    res.status(200).json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { url },
+      }),
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -37,10 +39,12 @@ exports.getAdminAdvertisements = async (req, res) => {
     const advertisements = await Advertisement.find(query)
       .sort('-priority -createdAt');
 
-    res.json({
-      status: 'success',
-      data: { advertisements }
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { advertisements },
+      }),
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -70,10 +74,12 @@ exports.getAllAdvertisements = async (req, res) => {
       .sort('-priority -createdAt')
       .limit(10);
 
-    res.json({
-      status: 'success',
-      data: { advertisements }
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { advertisements },
+      }),
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -94,10 +100,12 @@ exports.getAdvertisementById = async (req, res) => {
       });
     }
 
-    res.json({
-      status: 'success',
-      data: { advertisement }
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { advertisement },
+      }),
+    );
   } catch (error) {
     res.status(500).json({
       status: 'error',
@@ -116,10 +124,12 @@ exports.uploadAdvertisementMedia = (req, res) => {
   }
   const baseUrl = getPublicBaseUrl(req);
   const url = `${baseUrl}/uploads/advertisements/${req.file.filename}`;
-  res.status(200).json({
-    status: 'success',
-    data: { url }
-  });
+  res.status(200).json(
+    ensureHttpsImageUrls({
+      status: 'success',
+      data: { url },
+    }),
+  );
 };
 
 // Create advertisement
@@ -127,10 +137,12 @@ exports.createAdvertisement = async (req, res) => {
   try {
     const advertisement = await Advertisement.create(req.body);
 
-    res.status(201).json({
-      status: 'success',
-      data: { advertisement }
-    });
+    res.status(201).json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { advertisement },
+      }),
+    );
   } catch (error) {
     res.status(400).json({
       status: 'error',
@@ -155,10 +167,12 @@ exports.updateAdvertisement = async (req, res) => {
       });
     }
 
-    res.json({
-      status: 'success',
-      data: { advertisement }
-    });
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { advertisement },
+      }),
+    );
   } catch (error) {
     res.status(400).json({
       status: 'error',
