@@ -20,7 +20,7 @@ import { categoryAPI, productAPI } from "@/lib/api";
 import ProductCard from "../components/ProductCard";
 import PaginationBar from "../components/PaginationBar";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import { NATIVE_SELECT_CLASS } from "@/lib/nativeSelectClass";
+import Select from "@/app/components/Select";
 
 interface Category {
   _id: string;
@@ -67,6 +67,13 @@ function ProductsPageInner() {
     { label: "₾50 - ₾100", min: 50, max: 100 },
     { label: "₾100 - ₾200", min: 100, max: 200 },
     { label: "₾200+", min: 200, max: undefined as number | undefined },
+  ];
+
+  const sortOptions = [
+    { value: "price", label: "ფასი (ზრდადობით)" },
+    { value: "-price", label: "ფასი (კლებადობით)" },
+    { value: "-rating", label: "რეიტინგით" },
+    { value: "-createdAt", label: "უახლესი" },
   ];
 
   const pageFromUrl = parseInt(searchParams.get("page") || "1", 10) || 1;
@@ -341,19 +348,18 @@ function ProductsPageInner() {
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   კატეგორია
                 </label>
-                <select
+                <Select
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className={NATIVE_SELECT_CLASS}>
-                  <option value="">ყველა კატეგორია</option>
-                  {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      {cat.isSubcategory && cat.parent
+                  onChange={setSelectedCategory}
+                  placeholder="ყველა კატეგორია"
+                  options={categories.map((cat) => ({
+                    value: cat._id,
+                    label:
+                      cat.isSubcategory && cat.parent
                         ? `${cat.parent.name} › ${cat.name}`
-                        : cat.name}
-                    </option>
-                  ))}
-                </select>
+                        : cat.name,
+                  }))}
+                />
               </div>
 
               {/* Brand */}
@@ -375,17 +381,15 @@ function ProductsPageInner() {
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   ზომა
                 </label>
-                <select
+                <Select
                   value={selectedSize}
-                  onChange={(e) => setSelectedSize(e.target.value)}
-                  className={NATIVE_SELECT_CLASS}>
-                  <option value="">ყველა ზომა</option>
-                  {filterOptions.sizes.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedSize}
+                  placeholder="ყველა ზომა"
+                  options={filterOptions.sizes.map((s) => ({
+                    value: s,
+                    label: s,
+                  }))}
+                />
               </div>
 
               {/* Purpose */}
@@ -393,17 +397,15 @@ function ProductsPageInner() {
                 <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                   დანიშნულება
                 </label>
-                <select
+                <Select
                   value={selectedPurpose}
-                  onChange={(e) => setSelectedPurpose(e.target.value)}
-                  className={NATIVE_SELECT_CLASS}>
-                  <option value="">ყველა დანიშნულება</option>
-                  {filterOptions.purposes.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedPurpose}
+                  placeholder="ყველა დანიშნულება"
+                  options={filterOptions.purposes.map((p) => ({
+                    value: p,
+                    label: p,
+                  }))}
+                />
               </div>
 
               {/* Price range */}
@@ -465,16 +467,12 @@ function ProductsPageInner() {
                   <label className="block text-slate-400 text-xs font-medium uppercase tracking-wider">
                     დალაგება
                   </label>
-                  <select
+                  <Select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className={NATIVE_SELECT_CLASS}>
-                    <option value="">ნაგულისხმევი</option>
-                    <option value="price">ფასი (ზრდადობით)</option>
-                    <option value="-price">ფასი (კლებადობით)</option>
-                    <option value="-rating">რейтингით</option>
-                    <option value="-createdAt">უახლესი</option>
-                  </select>
+                    onChange={setSortBy}
+                    placeholder="ნაგულისხმევი"
+                    options={sortOptions}
+                  />
                 </div>
                 <label className="inline-flex items-center gap-3 py-2 cursor-pointer group min-h-[44px] touch-manipulation">
                   <input

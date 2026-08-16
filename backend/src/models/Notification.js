@@ -10,8 +10,10 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     enum: [
+      'order_pending',
       'order_confirmed',
       'order_processing',
+      'order_ready_to_ship',
       'order_shipped',
       'order_delivered',
       'order_cancelled',

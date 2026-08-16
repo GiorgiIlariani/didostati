@@ -67,8 +67,28 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+    enum: ['pending', 'confirmed', 'processing', 'ready_to_ship', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
+  },
+  statusHistory: [{
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'processing', 'ready_to_ship', 'shipped', 'delivered', 'cancelled'],
+    },
+    changedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    note: String,
+    at: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
+  assignedManager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false,
   },
   paymentMethod: {
     type: String,
@@ -85,12 +105,15 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate order number using a timestamp and random suffix to avoid collisions
+// Generate order number: DID-YYYYMMDD-XXXXXX
 orderSchema.pre('validate', function(next) {
   if (!this.orderNumber) {
-    const timestamp = Date.now();
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
     const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-    this.orderNumber = `DID-${timestamp}-${random}`;
+    this.orderNumber = `DID-${y}${m}${d}-${random}`;
   }
   next();
 });

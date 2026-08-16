@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload, Video, ImageIcon, Loader2 } from "lucide-react";
 import { advertisementAPI } from "@/lib/api";
 import { useAuth } from "@/lib/context/AuthContext";
-import { isAllowedAdmin } from "@/lib/admin";
+import { isFullAdmin } from "@/lib/admin";
 import { FormSelect, type FormSelectOption } from "@/app/components/FormSelect";
 import HeroMediaFrame from "@/app/components/HeroMediaFrame";
 
@@ -26,6 +26,7 @@ export default function AddHeroSlidePage() {
     type: "video",
     mediaUrl: "",
     position: "hero",
+    link: "",
     isActive: true,
     priority: 0,
   });
@@ -36,7 +37,7 @@ export default function AddHeroSlidePage() {
       router.replace(`/login?redirect=${encodeURIComponent("/admin/hero/add")}`);
       return;
     }
-    if (!isAllowedAdmin(user)) {
+    if (!isFullAdmin(user)) {
       router.replace("/");
     }
   }, [user, authLoading, router]);
@@ -85,7 +86,7 @@ export default function AddHeroSlidePage() {
     }
   };
 
-  if (authLoading || !isAllowedAdmin(user)) {
+  if (authLoading || !isFullAdmin(user)) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
@@ -206,6 +207,24 @@ export default function AddHeroSlidePage() {
                   />
                 </div>
               )}
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-semibold mb-2">
+                ლინკი კლიკზე (არასავალდებულო)
+              </label>
+              <input
+                type="text"
+                value={formData.link}
+                onChange={(e) =>
+                  setFormData({ ...formData, link: e.target.value })
+                }
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                placeholder="მაგ: /products ან https://... ან /products/ID"
+              />
+              <p className="text-slate-500 text-sm mt-2">
+                თუ შევსებულია — სლაიდზე დაკლიკება ამ გვერდზე გადაიყვანს
+              </p>
             </div>
 
             <div>

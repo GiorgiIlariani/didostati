@@ -9,10 +9,7 @@ import {
   type ShippingWizardCity,
   DELIVERY_BASE_LABEL,
 } from "@/lib/utils/delivery";
-import {
-  CONTACT_PHONE_TEL,
-  CONTACT_PHONE_DISPLAY,
-} from "@/lib/contact";
+import { CONTACT_PHONE_TEL, CONTACT_PHONE_DISPLAY } from "@/lib/contact";
 
 const GeorgiaShippingLeafletMap = dynamic(
   () => import("./GeorgiaShippingLeafletMap"),
@@ -25,7 +22,7 @@ const GeorgiaShippingLeafletMap = dynamic(
         რუკა იტვირთება…
       </div>
     ),
-  }
+  },
 );
 
 type TruckKind = "small" | "large";
@@ -61,8 +58,7 @@ export default function ShippingPriceWizard() {
     return 3;
   }, [city, truck]);
 
-  const price =
-    city && truck ? feeFor(city, truck) : null;
+  const price = city && truck ? feeFor(city, truck) : null;
 
   function resetAll() {
     setCity(null);
@@ -149,7 +145,8 @@ export default function ShippingPriceWizard() {
               </div>
             </div>
             <p className="text-xs text-slate-500 mb-2">
-              რეალური რუკა (OpenStreetMap) — დააჭირეთ ქალაქის წერტილს ან აირჩიეთ სიიდან
+              რეალური რუკა (OpenStreetMap) — დააჭირეთ ქალაქის წერტილს ან აირჩიეთ
+              სიიდან
             </p>
             <GeorgiaShippingLeafletMap
               cities={SHIPPING_WIZARD_CITIES}
@@ -158,8 +155,9 @@ export default function ShippingPriceWizard() {
               className="h-[min(520px,70vh)] min-h-[280px] w-full shadow-inner"
             />
             <p className="text-[10px] text-slate-600 mt-2 leading-relaxed">
-              ქვედა კუთხეში — წყაროს მითითება. გადიდება: მარჯვენა +/- ღილაკები ან ორი თითი
-              მობილურზე. გვერდის გადახვევა რუკაზე არ ზრდის მასშტაბს (განზრახ).
+              ქვედა კუთხეში — წყაროს მითითება. გადიდება: მარჯვენა +/- ღილაკები
+              ან ორი თითი მობილურზე. გვერდის გადახვევა რუკაზე არ ზრდის მასშტაბს
+              (განზრახ).
             </p>
           </div>
         </div>
@@ -176,8 +174,8 @@ export default function ShippingPriceWizard() {
             ნაბიჯი 2 — აირჩიეთ ტრანსპორტი
           </h2>
           <p className="text-sm text-slate-400 mb-4">
-            მიწოდება: <strong className="text-slate-200">{city.name}</strong>{" "}
-            — რა ტიპის მანქანა გჭირდებათ?
+            მიწოდება: <strong className="text-slate-200">{city.name}</strong> —
+            რა ტიპის მანქანა გჭირდებათ?
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             {TRUCK_OPTIONS.map((opt) => {

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const productController = require("../controllers/productController");
-const { protect, restrictTo } = require("../middleware/authMiddleware");
+const { protect, protectOptional, restrictTo } = require("../middleware/authMiddleware");
 const { productImageUpload } = require("../middleware/uploadMiddleware");
 
 // Get all products with filters
@@ -20,40 +20,70 @@ router.get("/search", productController.searchProducts);
 router.get("/filters/options", productController.getFilterOptions);
 
 // Get all products for admin (includes inactive, no pagination limit)
+// Staff can view/manage the product catalog, but not delete/restore/purge.
 router.get(
   "/admin/all",
   protect,
-  restrictTo("admin"),
+  restrictTo("admin", "staff"),
   productController.getAdminAllProducts,
 );
 
+// Get soft-deleted products — the "trash" (admin only)
+router.get(
+  "/admin/trash",
+  protect,
+  restrictTo("admin"),
+  productController.getTrashedProducts,
+);
+
 // Get single product by ID
-router.get("/:id", productController.getProductById);
+router.get("/:id", protectOptional, productController.getProductById);
 
 // Add/update review for a product (logged in users)
 router.post("/:id/reviews", protect, productController.addProductReview);
 
-// Upload product image (admin only) – must be before /:id
+// Upload product image (admin/staff)
 router.post(
   "/upload-image",
   protect,
-  restrictTo("admin"),
+  restrictTo("admin", "staff"),
   productImageUpload.single("image"),
   productController.uploadProductImage,
 );
 
-// Create new product (admin only)
-router.post("/", protect, restrictTo("admin"), productController.createProduct);
+// Create new product (admin/staff)
+router.post(
+  "/",
+  protect,
+  restrictTo("admin", "staff"),
+  productController.createProduct,
+);
 
-// Update product (admin only)
+// Update product (admin/staff)
 router.put(
   "/:id",
   protect,
-  restrictTo("admin"),
+  restrictTo("admin", "staff"),
   productController.updateProduct,
 );
 
-// Delete product (admin only)
+// Restore a soft-deleted product (admin only)
+router.patch(
+  "/:id/restore",
+  protect,
+  restrictTo("admin"),
+  productController.restoreProduct,
+);
+
+// Permanently delete a product already in the trash (admin only)
+router.delete(
+  "/:id/permanent",
+  protect,
+  restrictTo("admin"),
+  productController.permanentlyDeleteProduct,
+);
+
+// Delete product (admin only) — moves it to the trash (soft delete)
 router.delete(
   "/:id",
   protect,

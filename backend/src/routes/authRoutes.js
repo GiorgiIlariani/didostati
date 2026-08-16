@@ -8,6 +8,8 @@ const { authLimiter } = require('../middleware/rateLimit');
 // Public (rate limited)
 router.post('/register', authLimiter, registerValidator, authController.register);
 router.post('/login', authLimiter, loginValidator, authController.login);
+router.post('/phone', authLimiter, authController.loginWithPhone);
+router.post('/google', authLimiter, authController.loginWithGoogle);
 
 // Protected – requires valid JWT
 router.get('/me', authMiddleware.protect, authController.getMe);

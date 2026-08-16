@@ -14,15 +14,12 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ShoppingCart,
-  Star,
-  Check,
   Heart,
-  Eye,
-  TrendingUp,
 } from "lucide-react";
 import { useCart } from "@/lib/context/CartContext";
 import { useWishlist } from "@/lib/context/WishlistContext";
 import { useState } from "react";
+import AddedToCartModal from "@/app/components/AddedToCartModal";
 
 interface ProductCardProps {
   product: {
@@ -43,9 +40,9 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const { addToCart, isInCart } = useCart();
+  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const [justAdded, setJustAdded] = useState(false);
+  const [showAddedModal, setShowAddedModal] = useState(false);
 
   const discount = product.originalPrice
     ? Math.round(
@@ -62,13 +59,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
       brand: product.brand,
       maxStock: product.stock,
     });
-
-    // Show "Added!" feedback
-    setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 2000);
+    setShowAddedModal(true);
   };
 
   return (
+    <>
     <div className="group bg-slate-800 rounded-lg sm:rounded-xl overflow-hidden border border-slate-700 hover:border-orange-500/50 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/10 h-full flex flex-col">
       {/* Image: shorter on mobile so more products fit above the fold */}
       <Link
@@ -157,15 +152,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
         {/* Add to cart - pinned to bottom */}
         <button
           onClick={handleAddToCart}
-          disabled={!product.inStock || justAdded}
-          className="mt-auto w-full py-2 sm:py-3 md:py-4 px-2 sm:px-3 md:px-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white text-xs sm:text-sm md:text-base font-semibold rounded-md sm:rounded-lg hover:from-orange-600 hover:to-yellow-600 active:from-orange-700 active:to-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md touch-manipulation min-h-[40px] sm:min-h-[46px] md:min-h-[52px] flex items-center justify-center gap-1.5 sm:gap-2">
-          {justAdded ? (
-            <>
-              <Check className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span className="hidden sm:inline">დამატებულია!</span>
-              <span className="sm:hidden">დამატებულია!</span>
-            </>
-          ) : product.inStock ? (
+          disabled={!product.inStock}
+          className="mt-auto w-full py-2.5 sm:py-3 md:py-3.5 px-2 sm:px-3 md:px-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white text-xs sm:text-sm md:text-base font-bold rounded-md sm:rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-md touch-manipulation min-h-[44px] sm:min-h-[48px] md:min-h-[52px] flex items-center justify-center gap-1.5 sm:gap-2 ds-btn-primary">
+          {product.inStock ? (
             <>
               <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
               <span className="hidden sm:inline">კალათაში დამატება</span>
@@ -177,6 +166,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </button>
       </div>
     </div>
+    <AddedToCartModal
+      open={showAddedModal}
+      onClose={() => setShowAddedModal(false)}
+      productName={product.name}
+    />
+    </>
   );
 };
 

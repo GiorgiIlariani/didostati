@@ -1,8 +1,77 @@
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
+const ProductView = require("../models/ProductView");
 const Order = require("../models/Order");
 const Category = require("../models/Category");
 const { ensureHttpsImageUrls, getPublicBaseUrl } = require("../utils/imageUrl");
+const { escapeRegex } = require("../utils/escapeRegex");
+const { getVisitorKey } = require("../utils/visitorKey");
+const { logActivity } = require("../services/activityLogService");
+
+// Storefront-facing queries must never include soft-deleted products, even
+// though such products are rare/legacy without the field explicitly set.
+const NOT_DELETED = { isDeleted: { $ne: true } };
+
+// Fields staff/admin may set via create/update. Soft-delete + audit +
+// social-proof counters are intentionally excluded so a crafted request
+// cannot soft-delete via PUT or forge who deleted/created a product.
+const PRODUCT_WRITABLE_FIELDS = [
+  "name",
+  "description",
+  "price",
+  "originalPrice",
+  "category",
+  "brand",
+  "images",
+  "inStock",
+  "stock",
+  "manualUrl",
+  "videoUrl",
+  "badge",
+  "specifications",
+  "tags",
+  "size",
+  "purpose",
+  "isActive",
+  "rating",
+  "reviewsCount",
+];
+
+// Count a product page open once per person. Wishlist, admin edit, and
+// recently-viewed prefetch must not inflate this number.
+async function recordUniqueProductView(req, product) {
+  const current = product.viewCount || 0;
+  if (req.query.trackView !== "1") return current;
+
+  try {
+    await ProductView.create({
+      product: product._id,
+      visitorKey: getVisitorKey(req),
+    });
+    const updated = await Product.findByIdAndUpdate(
+      product._id,
+      { $inc: { viewCount: 1 } },
+      { new: true, select: "viewCount" },
+    );
+    return updated?.viewCount ?? current + 1;
+  } catch (err) {
+    if (err.code !== 11000) {
+      console.error("Failed to record product view:", err);
+    }
+    return current;
+  }
+}
+
+function pickProductFields(body) {
+  if (!body || typeof body !== "object") return {};
+  const picked = {};
+  for (const key of PRODUCT_WRITABLE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) {
+      picked[key] = body[key];
+    }
+  }
+  return picked;
+}
 
 // Get all products with filtering, sorting, and pagination
 exports.getAllProducts = async (req, res) => {
@@ -22,7 +91,7 @@ exports.getAllProducts = async (req, res) => {
     } = req.query;
 
     // Build query
-    const query = { isActive: true };
+    const query = { isActive: true, ...NOT_DELETED };
 
     // Category: accept either ObjectId or slug
     if (categoryParam && categoryParam.trim()) {
@@ -124,10 +193,12 @@ exports.getFilterOptions = async (req, res) => {
     const [sizes, purposes] = await Promise.all([
       Product.distinct("size", {
         isActive: true,
+        ...NOT_DELETED,
         size: { $exists: true, $ne: null, $ne: "" },
       }).then((arr) => arr.filter(Boolean).sort()),
       Product.distinct("purpose", {
         isActive: true,
+        ...NOT_DELETED,
         purpose: { $exists: true, $ne: null, $ne: "" },
       }).then((arr) => arr.filter(Boolean).sort()),
     ]);
@@ -150,6 +221,7 @@ exports.getFeaturedProducts = async (req, res) => {
 
     const products = await Product.find({
       isActive: true,
+      ...NOT_DELETED,
       inStock: true,
       badge: { $in: ["Best Seller", "Popular", "New"] },
     })
@@ -207,6 +279,7 @@ exports.getPromotions = async (req, res) => {
     // Find products with badge: 'Sale' OR originalPrice > price
     const products = await Product.find({
       isActive: true,
+      ...NOT_DELETED,
       $or: [
         { badge: "Sale" },
         {
@@ -281,6 +354,7 @@ exports.searchProducts = async (req, res) => {
       {
         $text: { $search: cleanQuery },
         isActive: true,
+        ...NOT_DELETED,
       },
       {
         score: { $meta: "textScore" },
@@ -293,9 +367,10 @@ exports.searchProducts = async (req, res) => {
 
     // Fallback: if no results, use case-insensitive partial match on name/brand
     if (products.length === 0) {
-      const regex = new RegExp(cleanQuery, "i");
+      const regex = new RegExp(escapeRegex(cleanQuery), "i");
       products = await Product.find({
         isActive: true,
+        ...NOT_DELETED,
         $or: [{ name: regex }, { brand: regex }],
       })
         .populate("category", "name slug")
@@ -327,17 +402,14 @@ exports.getProductById = async (req, res) => {
       .populate("category", "name slug description")
       .populate("reviews.user", "name");
 
-    if (!product) {
+    if (!product || product.isDeleted) {
       return res.status(404).json({
         status: "error",
         message: "Product not found",
       });
     }
 
-    // Increment view count (async, don't wait)
-    Product.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } }).catch(
-      (err) => console.error("Failed to increment view count:", err),
-    );
+    const viewCount = await recordUniqueProductView(req, product);
 
     // Calculate sold count for today
     const todayStart = new Date();
@@ -366,10 +438,9 @@ exports.getProductById = async (req, res) => {
       );
     }
 
-    // Return product with updated counts
     const productObj = product.toObject();
-    productObj.viewCount = (product.viewCount || 0) + 1; // Show incremented value
-    productObj.soldCount = soldToday; // Show today's sales
+    productObj.viewCount = viewCount;
+    productObj.soldCount = soldToday;
 
     res.json(
       ensureHttpsImageUrls({
@@ -459,12 +530,38 @@ exports.addProductReview = async (req, res) => {
   }
 };
 
-// Get all products for admin (includes inactive)
+// Get all products for admin (includes inactive, excludes trash)
 exports.getAdminAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({})
+    const products = await Product.find(NOT_DELETED)
       .populate("category", "name slug")
       .sort("-createdAt")
+      .exec();
+
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        data: {
+          products,
+          count: products.length,
+        },
+      })
+    );
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Get soft-deleted products (admin only — the "trash")
+exports.getTrashedProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ isDeleted: true })
+      .populate("category", "name slug")
+      .populate("deletedBy", "name email")
+      .sort("-deletedAt")
       .exec();
 
     res.json(
@@ -500,10 +597,22 @@ exports.uploadProductImage = (req, res) => {
   });
 };
 
-// Create product (admin) – validation/cast errors in Georgian
+// Create product (admin/staff) – validation/cast errors in Georgian
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const product = await Product.create({
+      ...pickProductFields(req.body),
+      createdBy: req.user._id,
+      updatedBy: req.user._id,
+    });
+
+    logActivity({
+      user: req.user,
+      action: "product_create",
+      resourceType: "Product",
+      resourceId: product._id,
+      resourceName: product.name,
+    });
 
     res.status(201).json(
       ensureHttpsImageUrls({
@@ -529,13 +638,17 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-// Update product (admin)
+// Update product (admin/staff)
 exports.updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const product = await Product.findOneAndUpdate(
+      { _id: req.params.id, ...NOT_DELETED },
+      { ...pickProductFields(req.body), updatedBy: req.user._id },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!product) {
       return res.status(404).json({
@@ -543,6 +656,14 @@ exports.updateProduct = async (req, res) => {
         message: "პროდუქტი ვერ მოიძებნა",
       });
     }
+
+    logActivity({
+      user: req.user,
+      action: "product_update",
+      resourceType: "Product",
+      resourceId: product._id,
+      resourceName: product.name,
+    });
 
     res.json(
       ensureHttpsImageUrls({
@@ -568,10 +689,20 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-// Delete product (admin)
+// Delete product (admin only) — soft delete. The product is hidden
+// everywhere immediately but kept in the trash for recovery, so a mistaken
+// or malicious delete can never permanently wipe out data.
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findOneAndUpdate(
+      { _id: req.params.id, ...NOT_DELETED },
+      {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: req.user._id,
+      },
+      { new: true }
+    );
 
     if (!product) {
       return res.status(404).json({
@@ -580,9 +711,99 @@ exports.deleteProduct = async (req, res) => {
       });
     }
 
+    logActivity({
+      user: req.user,
+      action: "product_delete",
+      resourceType: "Product",
+      resourceId: product._id,
+      resourceName: product.name,
+    });
+
     res.json({
       status: "success",
-      message: "პროდუქტი წარმატებით წაიშალა",
+      message: "პროდუქტი გადატანილია სანაგვეზე — აღდგენა შესაძლებელია ნებისმიერ დროს",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Restore a soft-deleted product (admin only)
+exports.restoreProduct = async (req, res) => {
+  try {
+    const product = await Product.findOneAndUpdate(
+      { _id: req.params.id, isDeleted: true },
+      {
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({
+        status: "error",
+        message: "პროდუქტი სანაგვეში ვერ მოიძებნა",
+      });
+    }
+
+    logActivity({
+      user: req.user,
+      action: "product_restore",
+      resourceType: "Product",
+      resourceId: product._id,
+      resourceName: product.name,
+    });
+
+    res.json(
+      ensureHttpsImageUrls({
+        status: "success",
+        message: "პროდუქტი აღდგენილია",
+        data: { product },
+      })
+    );
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Permanently delete a product (admin only) — only allowed once it's
+// already in the trash, as a deliberate extra step against accidental loss.
+exports.permanentlyDeleteProduct = async (req, res) => {
+  try {
+    const product = await Product.findOne({
+      _id: req.params.id,
+      isDeleted: true,
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        status: "error",
+        message: "პროდუქტი სანაგვეში ვერ მოიძებნა. ჯერ გადაიტანეთ სანაგვეში.",
+      });
+    }
+
+    const { _id, name } = product;
+    await Product.deleteOne({ _id });
+
+    logActivity({
+      user: req.user,
+      action: "product_permanent_delete",
+      resourceType: "Product",
+      resourceId: _id,
+      resourceName: name,
+    });
+
+    res.json({
+      status: "success",
+      message: "პროდუქტი საბოლოოდ წაიშალა",
     });
   } catch (error) {
     res.status(500).json({

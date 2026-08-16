@@ -28,7 +28,7 @@ app.use(
     origin: corsOrigin,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Visitor-Id"],
   }),
 );
 app.use(express.json());
@@ -46,11 +46,13 @@ app.use("/api/products", require("./routes/productRoutes"));
 app.use("/api/categories", require("./routes/categoryRoutes"));
 app.use("/api/cart", require("./routes/cartRoutes"));
 app.use("/api/orders", require("./routes/orderRoutes"));
+app.use("/api/otp", require("./routes/otpRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/advertisements", require("./routes/advertisementRoutes"));
 app.use("/api/wishlist", require("./routes/wishlistRoutes"));
 app.use("/api/support", require("./routes/supportRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

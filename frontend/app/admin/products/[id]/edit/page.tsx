@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { isAllowedAdmin } from "@/lib/admin";
+import Select from "@/app/components/Select";
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -132,6 +133,10 @@ export default function EditProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    if (!formData.category) {
+      alert("Please select a category");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -281,21 +286,18 @@ export default function EditProductPage() {
                 <label className="block text-slate-300 font-semibold mb-2">
                   Category *
                 </label>
-                <select
-                  required
+                <Select
                   value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
-                >
-                  <option value="">Select category</option>
-                  {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      {cat.parent ? `${cat.parent.name} › ${cat.name}` : cat.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setFormData({ ...formData, category: v })}
+                  placeholder="Select category"
+                  className="rounded-lg"
+                  options={categories.map((cat) => ({
+                    value: cat._id,
+                    label: cat.parent
+                      ? `${cat.parent.name} › ${cat.name}`
+                      : cat.name,
+                  }))}
+                />
               </div>
               <div>
                 <label className="block text-slate-300 font-semibold mb-2">
@@ -365,19 +367,18 @@ export default function EditProductPage() {
                 <label className="block text-slate-300 font-semibold mb-2">
                   Badge
                 </label>
-                <select
+                <Select
                   value={formData.badge}
-                  onChange={(e) =>
-                    setFormData({ ...formData, badge: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
-                >
-                  <option value="">No badge</option>
-                  <option value="New">New</option>
-                  <option value="Sale">Sale</option>
-                  <option value="Popular">Popular</option>
-                  <option value="Best Seller">Best Seller</option>
-                </select>
+                  onChange={(v) => setFormData({ ...formData, badge: v })}
+                  placeholder="No badge"
+                  className="rounded-lg"
+                  options={[
+                    { value: "New", label: "New" },
+                    { value: "Sale", label: "Sale" },
+                    { value: "Popular", label: "Popular" },
+                    { value: "Best Seller", label: "Best Seller" },
+                  ]}
+                />
               </div>
             </div>
 

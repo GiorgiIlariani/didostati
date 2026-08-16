@@ -45,12 +45,14 @@ const seedDatabase = async () => {
     // Insert products with category references (categoryName -> id); include size, purpose
     // Rating and reviewsCount are not seeded — they stay 0 until real reviews exist
     console.log('🛍️  Creating products...');
-    const productsWithCategories = productsData.map(({ categoryName, reviews, rating, ...product }) => ({
+    const productsWithCategories = productsData.map(({ categoryName, reviews, rating, viewCount, soldCount, ...product }) => ({
       ...product,
       category: categoryMap[categoryName],
       rating: 0,
       reviewsCount: 0,
-      reviews: []
+      reviews: [],
+      viewCount: 0,
+      soldCount: 0,
     }));
 
     const products = await Product.insertMany(productsWithCategories);

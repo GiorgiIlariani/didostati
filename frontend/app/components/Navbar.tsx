@@ -172,13 +172,12 @@ const Navbar = () => {
                         onClick={() => setShowUserMenu(false)}>
                         ჩემი პროფილი
                       </Link>
-                      {/* <Link
+                      <Link
                         href="/orders"
                         className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        შეკვეთების ისტორია
-                      </Link> */}
+                        onClick={() => setShowUserMenu(false)}>
+                        ჩემი შეკვეთები
+                      </Link>
                       <Link
                         href="/wishlist"
                         className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
@@ -202,7 +201,7 @@ const Navbar = () => {
             ) : (
               <Link
                 href="/login"
-                className="px-4 py-2 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all text-sm">
+                className="ds-btn-primary px-5 py-2.5 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg text-sm min-h-[44px] inline-flex items-center">
                 შესვლა
               </Link>
             )}
@@ -210,18 +209,25 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden flex items-center gap-2">
+        <div className="md:hidden flex items-center gap-1.5">
+          {!loading && !user && (
+            <Link
+              href="/login"
+              className="ds-btn-primary px-3 py-2 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg text-xs min-h-[44px] inline-flex items-center">
+              შესვლა
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setShowMobileSearch(!showMobileSearch)}
-            className="p-2.5 rounded-lg hover:bg-orange-950/30 transition-all touch-manipulation">
+            className="p-2.5 rounded-lg hover:bg-orange-950/30 transition-all touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center">
             <Search className="w-5 h-5 text-slate-300" />
           </button>
           <ShoppingCartIcon />
           <button
             type="button"
             onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className="p-2.5 rounded-lg hover:bg-orange-950/30 transition-all touch-manipulation">
+            className="p-2.5 rounded-lg hover:bg-orange-950/30 transition-all touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center">
             {showMobileMenu ? (
               <X className="w-5 h-5 text-slate-300" />
             ) : (

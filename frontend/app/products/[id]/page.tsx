@@ -22,6 +22,7 @@ import { useCart } from "@/lib/context/CartContext";
 import { useWishlist } from "@/lib/context/WishlistContext";
 import ProductCard from "@/app/components/ProductCard";
 import ContactQuickActions from "@/app/components/ContactQuickActions";
+import AddedToCartModal from "@/app/components/AddedToCartModal";
 import {
   ShoppingCart,
   Heart,
@@ -82,7 +83,7 @@ export default function ProductDetailsPage() {
   const [error, setError] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [addedToCart, setAddedToCart] = useState(false);
+  const [addedToCartModal, setAddedToCartModal] = useState(false);
   const [consultName, setConsultName] = useState("");
   const [consultPhone, setConsultPhone] = useState("");
   const [consultMessage, setConsultMessage] = useState("");
@@ -132,7 +133,9 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const response = await productAPI.getById(params.id as string);
+        const response = await productAPI.getById(params.id as string, {
+          trackView: true,
+        });
         if (response.status === "success") {
           setProduct(response.data.product);
         }
@@ -192,8 +195,7 @@ export default function ProductDetailsPage() {
       maxStock: product.stock,
     });
 
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    setAddedToCartModal(true);
   };
 
   const incrementQuantity = () => {
@@ -423,31 +425,26 @@ export default function ProductDetailsPage() {
                 </span>
               </span>
             </div>
-            {/* Social Proof */}
-            {(product.viewCount !== undefined && product.viewCount > 0) ||
-            (product.soldCount !== undefined && product.soldCount > 0) ? (
-              <div className="flex items-center gap-4 mb-6 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                {product.viewCount !== undefined && product.viewCount > 0 && (
-                  <div className="flex items-center gap-2 text-slate-300 text-sm">
-                    <Eye className="w-4 h-4 text-slate-400" />
-                    <span>
-                      <span className="font-semibold text-slate-100">
-                        {product.viewCount.toLocaleString()}
-                      </span>{" "}
-                      ადამიანმა ნახა
-                    </span>
-                  </div>
-                )}
-                {product.soldCount !== undefined && product.soldCount > 0 && (
-                  <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="font-semibold">
-                      {product.soldCount} გაყიდული დღეს
-                    </span>
-                  </div>
-                )}
+            {/* Social Proof — always show views; sold today only when > 0 */}
+            <div className="flex items-center gap-4 mb-6 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+              <div className="flex items-center gap-2 text-slate-300 text-sm">
+                <Eye className="w-4 h-4 text-slate-400" />
+                <span>
+                  <span className="font-semibold text-slate-100">
+                    {(product.viewCount ?? 0).toLocaleString()}
+                  </span>{" "}
+                  ადამიანმა ნახა
+                </span>
               </div>
-            ) : null}
+              {product.soldCount !== undefined && product.soldCount > 0 && (
+                <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="font-semibold">
+                    {product.soldCount} გაყიდული დღეს
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Price */}
             <div className="flex items-baseline gap-3 mb-6">
@@ -546,20 +543,11 @@ export default function ProductDetailsPage() {
             <div className="flex gap-4 mb-8">
               <button
                 onClick={handleAddToCart}
-                disabled={!product.inStock || addedToCart}
+                disabled={!product.inStock}
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-xl hover:from-orange-600 hover:to-yellow-600 active:from-orange-700 active:to-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg touch-manipulation min-h-[52px]">
-                {addedToCart ? (
-                  <>
-                    <Check className="w-5 h-5" />
-                    დამატებულია!
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-5 h-5" />
-                    <span className="hidden sm:inline">კალათაში დამატება</span>
-                    <span className="sm:hidden">დამატება</span>
-                  </>
-                )}
+                <ShoppingCart className="w-5 h-5" />
+                <span className="hidden sm:inline">კალათაში დამატება</span>
+                <span className="sm:hidden">დამატება</span>
               </button>
               <button
                 onClick={async () => await toggleWishlist(product._id)}
@@ -748,18 +736,16 @@ export default function ProductDetailsPage() {
                       <label className="text-slate-300 text-sm">
                         შეფასება:
                       </label>
-                      <select
-                        value={reviewRating}
-                        onChange={(e) =>
-                          setReviewRating(Number(e.target.value))
-                        }
-                        className="px-2 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-100 text-sm focus:border-orange-500 outline-none">
-                        {[5, 4, 3, 2, 1].map((r) => (
-                          <option key={r} value={r}>
-                            {r} ⭐
-                          </option>
-                        ))}
-                      </select>
+                      <Select
+                        value={String(reviewRating)}
+                        onChange={(v) => setReviewRating(Number(v))}
+                        size="sm"
+                        className="w-28 rounded-md"
+                        options={[5, 4, 3, 2, 1].map((r) => ({
+                          value: String(r),
+                          label: `${r} ⭐`,
+                        }))}
+                      />
                     </div>
                     <textarea
                       placeholder="დაწერეთ თქვენი აზრი ამ პროდუქტზე..."
@@ -795,6 +781,11 @@ export default function ProductDetailsPage() {
           </div>
         )}
       </div>
+      <AddedToCartModal
+        open={addedToCartModal}
+        onClose={() => setAddedToCartModal(false)}
+        productName={product.name}
+      />
     </div>
   );
 }

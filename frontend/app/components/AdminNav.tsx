@@ -8,10 +8,14 @@ import {
   Package,
   MessageSquare,
   ShoppingBag,
+  LayoutDashboard,
+  Trash2,
+  Users,
+  History,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { isAllowedAdmin } from "@/lib/admin";
+import { isAllowedAdmin, isFullAdmin } from "@/lib/admin";
 
 const AdminNav = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -19,6 +23,8 @@ const AdminNav = () => {
 
   if (authLoading) return null;
   if (!isAllowedAdmin(user)) return null;
+
+  const fullAdmin = isFullAdmin(user);
 
   return (
     <>
@@ -40,6 +46,15 @@ const AdminNav = () => {
               Admin Panel
             </h3>
             <div className="space-y-2">
+              {fullAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
+                  <LayoutDashboard className="w-5 h-5 text-sky-400" />
+                  <span className="font-medium">Dashboard</span>
+                </Link>
+              )}
               <Link
                 href="/admin/products"
                 onClick={() => setIsOpen(false)}
@@ -54,13 +69,45 @@ const AdminNav = () => {
                 <Plus className="w-5 h-5 text-orange-400" />
                 <span className="font-medium">Add Product</span>
               </Link>
-              <Link
-                href="/admin/hero"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
-                <Video className="w-5 h-5 text-yellow-400" />
-                <span className="font-medium">Hero სლაიდები</span>
-              </Link>
+              {fullAdmin && (
+                <>
+                  <Link
+                    href="/admin/products/trash"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
+                    <Trash2 className="w-5 h-5 text-red-400" />
+                    <span className="font-medium">სანაგვე</span>
+                  </Link>
+                  <Link
+                    href="/admin/hero"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
+                    <Video className="w-5 h-5 text-yellow-400" />
+                    <span className="font-medium">Hero სლაიდები</span>
+                  </Link>
+                  <Link
+                    href="/admin/orders"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
+                    <Package className="w-5 h-5 text-emerald-400" />
+                    <span className="font-medium">შეკვეთები</span>
+                  </Link>
+                  <Link
+                    href="/admin/users"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
+                    <Users className="w-5 h-5 text-violet-400" />
+                    <span className="font-medium">მომხმარებლები</span>
+                  </Link>
+                  <Link
+                    href="/admin/activity-log"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]">
+                    <History className="w-5 h-5 text-sky-400" />
+                    <span className="font-medium">აქტივობის ისტორია</span>
+                  </Link>
+                </>
+              )}
               {/* <Link
                 href="/admin/advertisements"
                 onClick={() => setIsOpen(false)}
@@ -68,14 +115,6 @@ const AdminNav = () => {
               >
                 <List className="w-5 h-5 text-blue-400" />
                 <span className="font-medium">Manage Ads</span>
-              </Link> */}
-              {/* <Link
-                href="/admin/orders"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-700 active:bg-slate-600 rounded-lg transition-colors text-slate-100 touch-manipulation min-h-[44px]"
-              >
-                <Package className="w-5 h-5 text-emerald-400" />
-                <span className="font-medium">Manage Orders</span>
               </Link>
               <Link
                 href="/admin/support"

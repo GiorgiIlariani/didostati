@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { getJwtSecret } = require("../config/jwtSecret");
 
 // Protect routes – require valid JWT
 exports.protect = async (req, res, next) => {
@@ -17,7 +18,7 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     const user = await User.findById(decoded.id).select("-password");
     if (!user) {
       return res
@@ -55,7 +56,7 @@ exports.protectOptional = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     const user = await User.findById(decoded.id).select("-password");
     if (user && user.isActive) {
       req.user = user;

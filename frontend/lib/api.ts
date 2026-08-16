@@ -2,6 +2,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const AUTH_TOKEN_KEY = 'didostati_token';
+const VISITOR_ID_KEY = 'didostati_vid';
+
+function getVisitorId(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    let id = window.localStorage.getItem(VISITOR_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      window.localStorage.setItem(VISITOR_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return null;
+  }
+}
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -23,6 +38,8 @@ async function apiRequest(endpoint: string, options?: RequestInit) {
     ...(options?.headers as Record<string, string>),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  const visitorId = getVisitorId();
+  if (visitorId) headers['X-Visitor-Id'] = visitorId;
 
   try {
     const response = await fetch(url, { ...options, headers });
@@ -92,9 +109,10 @@ export const productAPI = {
     return apiRequest('/products/filters/options');
   },
 
-  // Get single product
-  getById: async (id: string) => {
-    return apiRequest(`/products/${id}`);
+  // Get single product. trackView counts a unique person on the product page.
+  getById: async (id: string, options?: { trackView?: boolean }) => {
+    const q = options?.trackView ? '?trackView=1' : '';
+    return apiRequest(`/products/${id}${q}`);
   },
 
   // Get product by id; returns null on 404 without logging (e.g. for recently viewed with stale ids)
@@ -145,16 +163,35 @@ export const productAPI = {
     });
   },
 
-  // Delete product (admin)
+  // Delete product (admin only) — soft delete, moves to trash
   delete: async (id: string) => {
     return apiRequest(`/products/${id}`, {
       method: 'DELETE',
     });
   },
 
-  // Get all products for admin (includes inactive)
+  // Get all products for admin (includes inactive, excludes trash)
   getAdminAll: async () => {
     return apiRequest('/products/admin/all');
+  },
+
+  // Get soft-deleted products — the trash (admin only)
+  getTrash: async () => {
+    return apiRequest('/products/admin/trash');
+  },
+
+  // Restore a soft-deleted product (admin only)
+  restore: async (id: string) => {
+    return apiRequest(`/products/${id}/restore`, {
+      method: 'PATCH',
+    });
+  },
+
+  // Permanently delete a product already in the trash (admin only)
+  permanentDelete: async (id: string) => {
+    return apiRequest(`/products/${id}/permanent`, {
+      method: 'DELETE',
+    });
   },
 };
 
@@ -202,12 +239,15 @@ export const orderAPI = {
     deliveryFee?: number;
     deliveryType?: 'standard' | 'express' | 'pickup';
     phone?: string;
+    name?: string;
+    email?: string;
     customer?: {
       name?: string;
       email?: string;
       phone?: string;
     };
     notes?: string;
+    otpToken?: string;
   }) => {
     return apiRequest('/orders', {
       method: 'POST',
@@ -221,14 +261,82 @@ export const orderAPI = {
   },
 };
 
-// Admin Order API calls
-export const adminOrderAPI = {
-  // Get all orders (admin only)
-  getAll: async (params?: { status?: string; page?: number; limit?: number }) => {
+export const otpAPI = {
+  send: async (phone: string, purpose: 'order' | 'login' = 'order') => {
+    return apiRequest('/otp/send', {
+      method: 'POST',
+      body: JSON.stringify({ phone, purpose }),
+    });
+  },
+  verify: async (phone: string, code: string, purpose: 'order' | 'login' = 'order') => {
+    return apiRequest('/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code, purpose }),
+    });
+  },
+};
+
+// Admin dashboard stats
+export const adminStatsAPI = {
+  get: async () => {
+    return apiRequest('/admin/stats');
+  },
+};
+
+// Admin user management (promote/demote, e.g. grant/revoke the "staff" role)
+export const adminUserAPI = {
+  list: async (params?: { role?: string; q?: string; page?: number; limit?: number }) => {
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    const query = queryParams.toString();
+    return apiRequest(`/admin/users${query ? `?${query}` : ''}`);
+  },
+  updateRole: async (userId: string, role: 'user' | 'staff' | 'admin') => {
+    return apiRequest(`/admin/users/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    });
+  },
+};
+
+// Admin activity log (audit trail)
+export const adminActivityAPI = {
+  list: async (params?: { page?: number; limit?: number; action?: string; resourceType?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    const query = queryParams.toString();
+    return apiRequest(`/admin/activity-log${query ? `?${query}` : ''}`);
+  },
+};
+
+// Admin Order API calls
+export const adminOrderAPI = {
+  // Get all orders (admin only)
+  getAll: async (params?: {
+    status?: string;
+    city?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
           queryParams.append(key, String(value));
         }
       });
@@ -237,11 +345,20 @@ export const adminOrderAPI = {
     return apiRequest(`/orders/admin/all${query ? `?${query}` : ''}`);
   },
 
+  getById: async (orderId: string) => {
+    return apiRequest(`/orders/admin/${orderId}`);
+  },
+
   // Update order status (admin only)
-  updateStatus: async (orderId: string, status?: string, paymentStatus?: string) => {
+  updateStatus: async (
+    orderId: string,
+    status?: string,
+    paymentStatus?: string,
+    extras?: { assignedManager?: string | null; note?: string }
+  ) => {
     return apiRequest(`/orders/admin/${orderId}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status, paymentStatus }),
+      body: JSON.stringify({ status, paymentStatus, ...extras }),
     });
   },
 };
@@ -330,6 +447,18 @@ export const authAPI = {
     return apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    });
+  },
+  loginWithPhone: async (phone: string, code: string, name?: string) => {
+    return apiRequest('/auth/phone', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code, name }),
+    });
+  },
+  loginWithGoogle: async (credential: string) => {
+    return apiRequest('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
     });
   },
   getMe: async () => {

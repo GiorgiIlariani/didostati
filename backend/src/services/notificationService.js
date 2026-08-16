@@ -25,6 +25,10 @@ const createNotification = async (userId, type, title, message, link = null, met
  */
 const createOrderNotification = async (userId, orderNumber, status, orderId) => {
   const statusMessages = {
+    pending: {
+      title: 'ახალი შეკვეთა',
+      message: `თქვენი შეკვეთა ${orderNumber} მიღებულია.`
+    },
     confirmed: {
       title: 'შეკვეთა დადასტურებულია',
       message: `თქვენი შეკვეთა ${orderNumber} დადასტურებულია და მუშავდება.`
@@ -33,9 +37,13 @@ const createOrderNotification = async (userId, orderNumber, status, orderId) => 
       title: 'შეკვეთა მუშავდება',
       message: `თქვენი შეკვეთა ${orderNumber} მუშავდება.`
     },
+    ready_to_ship: {
+      title: 'მზადაა გასაგზავნად',
+      message: `თქვენი შეკვეთა ${orderNumber} მზადაა გასაგზავნად.`
+    },
     shipped: {
-      title: 'შეკვეთა გაგზავნილია',
-      message: `თქვენი შეკვეთა ${orderNumber} გაგზავნილია.`
+      title: 'შეკვეთა გზაშია',
+      message: `თქვენი შეკვეთა ${orderNumber} გზაშია.`
     },
     delivered: {
       title: 'შეკვეთა მიწოდებულია',

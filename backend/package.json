@@ -10,6 +10,7 @@
     "create-admin": "node src/scripts/createAdmin.js",
     "delete-ads": "node src/scripts/deleteAds.js",
     "delete-products": "node src/scripts/deleteProducts.js",
+    "delete-orders": "node src/scripts/deleteOrders.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

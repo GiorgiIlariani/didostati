@@ -1,9 +1,7 @@
 "use client";
 
-import { NATIVE_SELECT_CLASS } from "@/lib/nativeSelectClass";
+import Select from "@/app/components/Select";
 import { DELIVERY_CITIES } from "@/lib/utils/delivery";
-
-const fieldClass = `${NATIVE_SELECT_CLASS} tabular-nums`;
 
 type Props = {
   value: string;
@@ -19,17 +17,16 @@ export default function DeliveryCitySelect({
   className = "",
 }: Props) {
   return (
-    <select
+    <Select
       id={id}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`${fieldClass} ${className}`.trim()}>
-      <option value="">აირჩიეთ ქალაქი ან მდებარეობა</option>
-      {DELIVERY_CITIES.map((c) => (
-        <option key={c.name} value={c.name}>
-          {c.name} — ₾{c.fee.toFixed(2)}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      placeholder="აირჩიეთ ქალაქი ან მდებარეობა"
+      className={`tabular-nums ${className}`.trim()}
+      options={DELIVERY_CITIES.map((c) => ({
+        value: c.name,
+        label: `${c.name} — ₾${c.fee.toFixed(2)}`,
+      }))}
+    />
   );
 }

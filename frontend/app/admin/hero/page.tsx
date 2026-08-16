@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { advertisementAPI } from "@/lib/api";
 import { useAuth } from "@/lib/context/AuthContext";
-import { isAllowedAdmin } from "@/lib/admin";
+import { isFullAdmin } from "@/lib/admin";
 import HeroMediaFrame from "@/app/components/HeroMediaFrame";
 
 interface HeroSlide {
@@ -43,7 +43,7 @@ export default function AdminHeroPage() {
       router.replace(`/login?redirect=${encodeURIComponent("/admin/hero")}`);
       return;
     }
-    if (!isAllowedAdmin(user)) {
+    if (!isFullAdmin(user)) {
       router.replace("/");
       return;
     }
@@ -64,7 +64,7 @@ export default function AdminHeroPage() {
   };
 
   useEffect(() => {
-    if (authLoading || !isAllowedAdmin(user)) return;
+    if (authLoading || !isFullAdmin(user)) return;
     fetchSlides();
   }, [user, authLoading]);
 
@@ -105,7 +105,7 @@ export default function AdminHeroPage() {
     }
   };
 
-  if (authLoading || !isAllowedAdmin(user)) {
+  if (authLoading || !isFullAdmin(user)) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />

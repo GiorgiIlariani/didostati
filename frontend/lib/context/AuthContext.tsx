@@ -10,6 +10,7 @@ export interface User {
   email: string;
   role: string;
   phone?: string;
+  authProvider?: string;
 }
 
 interface AuthContextType {
@@ -17,6 +18,8 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithPhone: (phone: string, code: string, name?: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -36,6 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const applyAuth = (res: any) => {
+    if (res.status === 'success' && res.data?.token) {
+      setStoredToken(res.data.token);
+      setTokenState(res.data.token);
+      setUser(res.data.user);
+      return;
+    }
+    throw new Error(res.message || 'Auth failed');
+  };
 
   const loadUser = useCallback(async () => {
     const stored = getStoredToken();
@@ -69,25 +82,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser]);
 
   const login = async (email: string, password: string) => {
-    const res = await authAPI.login(email, password);
-    if (res.status === 'success' && res.data?.token) {
-      setStoredToken(res.data.token);
-      setTokenState(res.data.token);
-      setUser(res.data.user);
-    } else {
-      throw new Error(res.message || 'Login failed');
-    }
+    applyAuth(await authAPI.login(email, password));
+  };
+
+  const loginWithPhone = async (phone: string, code: string, name?: string) => {
+    applyAuth(await authAPI.loginWithPhone(phone, code, name));
+  };
+
+  const loginWithGoogle = async (credential: string) => {
+    applyAuth(await authAPI.loginWithGoogle(credential));
   };
 
   const register = async (name: string, email: string, password: string) => {
-    const res = await authAPI.register(name, email, password);
-    if (res.status === 'success' && res.data?.token) {
-      setStoredToken(res.data.token);
-      setTokenState(res.data.token);
-      setUser(res.data.user);
-    } else {
-      throw new Error(res.message || 'Registration failed');
-    }
+    applyAuth(await authAPI.register(name, email, password));
   };
 
   const logout = () => {
@@ -101,6 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     token,
     loading,
     login,
+    loginWithPhone,
+    loginWithGoogle,
     register,
     logout,
     isAuthenticated: !!user,

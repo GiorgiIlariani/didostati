@@ -6,7 +6,8 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { adminSupportAPI } from '@/lib/api';
 import { ArrowLeft, MessageSquare, Calendar, Phone, Mail, Loader2, RefreshCw, Package, User, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { isAllowedAdmin } from '@/lib/admin';
+import { isFullAdmin } from '@/lib/admin';
+import Select from '@/app/components/Select';
 
 interface Product {
   _id: string;
@@ -71,7 +72,7 @@ export default function AdminSupportPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!isAllowedAdmin(user)) {
+    if (!isFullAdmin(user)) {
       router.replace('/');
       return;
     }
@@ -147,7 +148,7 @@ export default function AdminSupportPage() {
     );
   }
 
-  if (!isAllowedAdmin(user)) {
+  if (!isFullAdmin(user)) {
     return null;
   }
 
@@ -181,17 +182,17 @@ export default function AdminSupportPage() {
         </div>
 
         {/* Status Filter */}
-        <div className="mb-6">
-          <select
+        <div className="mb-6 max-w-xs">
+          <Select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
-          >
-            <option value="">ყველა სტატუსი</option>
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+            onChange={setStatusFilter}
+            placeholder="ყველა სტატუსი"
+            className="rounded-lg"
+            options={Object.entries(statusLabels).map(([value, label]) => ({
+              value,
+              label,
+            }))}
+          />
         </div>
 
         {error && (
@@ -269,17 +270,17 @@ export default function AdminSupportPage() {
                     </div>
                   </div>
 
-                  <div className="ml-4">
-                    <select
+                  <div className="ml-4 w-40">
+                    <Select
                       value={request.status}
-                      onChange={(e) => handleStatusUpdate(request._id, e.target.value)}
+                      onChange={(v) => handleStatusUpdate(request._id, v)}
                       disabled={updatingRequestId === request._id}
-                      className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-sm focus:border-orange-500 outline-none disabled:opacity-50"
-                    >
-                      {Object.entries(statusLabels).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
+                      size="sm"
+                      className="rounded-lg bg-slate-900"
+                      options={Object.entries(statusLabels).map(
+                        ([value, label]) => ({ value, label }),
+                      )}
+                    />
                   </div>
                 </div>
 

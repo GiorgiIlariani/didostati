@@ -1,70 +1,47 @@
 "use client";
 
 /**
- * Cart Page
- * Shopping cart functionality:
- * - Display all cart items
- * - Quantity controls (increase/decrease)
- * - Remove items
- * - Automatic price calculation:
- *   - Subtotal (sum of all items)
- *   - Delivery fee (location-based)
- *   - Total (subtotal + delivery)
- * - Price updates automatically when quantity changes
- * - Simple checkout button (redirects to /checkout)
+ * Cart Page — items, quantities, subtotal.
+ * Delivery is a separate step at /checkout/delivery.
  */
 import { useCart } from "@/lib/context/CartContext";
-// RESTORE_CHECKOUT_LOGIN_GATE:
-// import { useAuth } from "@/lib/context/AuthContext";
-import { DELIVERY_BASE_LABEL } from "@/lib/utils/delivery";
-import DeliveryRatesGuide from "@/app/components/DeliveryRatesGuide";
-import DeliveryCitySelect from "@/app/components/DeliveryCitySelect";
-import ContactQuickActions from "@/app/components/ContactQuickActions";
+import { useAuth } from "@/lib/context/AuthContext";
 import Image from "next/image";
 import Link from "next/link";
+import CheckoutSteps from "@/app/components/CheckoutSteps";
 import {
   Minus,
   Plus,
   Trash2,
   ShoppingBag,
   ArrowLeft,
-  MapPin,
   Truck,
-  Zap,
-  Store,
 } from "lucide-react";
 
 export default function CartPage() {
-  const {
-    cart,
-    updateQuantity,
-    removeFromCart,
-    deliveryType,
-    setDeliveryType,
-    deliveryCity,
-    setDeliveryCity,
-    requestDeliveryLocation,
-    locationStatus,
-    permissionDeniedHelp,
-    clearPermissionDeniedHelp,
-  } = useCart();
-  // RESTORE_CHECKOUT_LOGIN_GATE:
-  // const { user } = useAuth();
+  const { cart, updateQuantity, removeFromCart } = useCart();
+  const { user } = useAuth();
+
+  const deliveryHref = user
+    ? "/checkout/delivery"
+    : "/login?redirect=/checkout/delivery";
 
   if (cart.itemCount === 0) {
     return (
-      <div className="min-h-screen bg-slate-900 py-12 px-4">
+      <div className="min-h-screen bg-slate-900 py-12 px-4 ds-fade-in">
         <div className="max-w-4xl mx-auto text-center">
-          <ShoppingBag className="w-24 h-24 text-slate-600 mx-auto mb-6" />
+          <ShoppingBag className="w-24 h-24 text-slate-600 mx-auto mb-6 ds-check-pop" />
           <h1 className="text-3xl font-bold text-slate-100 mb-4">
             კალათა ცარიელია
           </h1>
-          <p className="text-slate-400 mb-8">დაამატეთ პროდუქტები კალათაში</p>
+          <p className="text-slate-400 mb-8 text-lg">
+            დაამატეთ პროდუქტები — შემდეგ მარტივად გააფორმებთ შეკვეთას
+          </p>
           <Link
             href="/products"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all">
+            className="ds-btn-primary inline-flex items-center gap-2 px-8 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white text-base font-bold rounded-lg min-h-[52px]">
             <ArrowLeft className="w-5 h-5" />
-            პროდუქტებზე დაბრუნება
+            პროდუქტების დამატება
           </Link>
         </div>
       </div>
@@ -72,12 +49,17 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 py-8 px-4 pb-28 lg:pb-8">
+    <div className="min-h-screen bg-slate-900 py-8 px-4 pb-28 lg:pb-8 ds-fade-in">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-slate-100 mb-8">კალათა</h1>
+        <CheckoutSteps current="cart" />
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 mb-2">
+          თქვენი კალათა ({cart.itemCount})
+        </h1>
+        <p className="text-slate-400 mb-6 sm:mb-8 text-base">
+          შეცვალეთ რაოდენობა, შემდეგ აირჩიეთ მიწოდება
+        </p>
 
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Cart items: 2-column compact grid on phone/tablet; single column on lg */}
           <div className="lg:col-span-2 order-2 lg:order-1">
             <p className="text-sm text-slate-500 mb-3 lg:hidden">
               {cart.itemCount} ნივთი <span className="text-slate-600">·</span>{" "}
@@ -153,7 +135,6 @@ export default function CartPage() {
             </div>
           </div>
 
-          {/* Order summary first on mobile so totals are never below a long list */}
           <div className="lg:col-span-1 order-1 lg:order-2">
             <aside id="cart-summary" className="lg:sticky lg:top-4 scroll-mt-4">
               <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-5 sm:p-6">
@@ -161,167 +142,33 @@ export default function CartPage() {
                   შეკვეთის შეჯამება
                 </h2>
 
-                {/* Delivery type: standard / express / pickup */}
-                {/* <div className="mb-4">
-                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">მიწოდების ტიპი</p>
-                <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors border-slate-600 hover:border-slate-500 has-[:checked]:border-orange-500 has-[:checked]:bg-slate-700/50">
-                    <input type="radio" name="deliveryType" value="standard" checked={deliveryType === "standard"} onChange={() => setDeliveryType("standard")} className="text-orange-500" />
-                    <Truck className="w-4 h-4 text-slate-400" />
-                    <span className="text-slate-200">მიწოდება</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors border-slate-600 hover:border-slate-500 has-[:checked]:border-orange-500 has-[:checked]:bg-slate-700/50">
-                    <input type="radio" name="deliveryType" value="express" checked={deliveryType === "express"} onChange={() => setDeliveryType("express")} className="text-orange-500" />
-                    <Zap className="w-4 h-4 text-slate-400" />
-                    <span className="text-slate-200">ექსპრეს მიწოდება</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors border-slate-600 hover:border-slate-500 has-[:checked]:border-orange-500 has-[:checked]:bg-slate-700/50">
-                    <input type="radio" name="deliveryType" value="pickup" checked={deliveryType === "pickup"} onChange={() => setDeliveryType("pickup")} className="text-orange-500" />
-                    <Store className="w-4 h-4 text-slate-400" />
-                    <span className="text-slate-200">თვითგატანა (₾0)</span>
-                  </label>
-                </div>
-              </div> */}
-
-                {/* <DeliveryRatesGuide variant="compact" className="mb-6" /> */}
-
-                {/* City selector when delivery (standard/express) and no GPS or user wants to choose city */}
-                {deliveryType !== "pickup" && (
-                  <div className="mb-6">
-                    <label
-                      htmlFor="cart-delivery-city"
-                      className="block text-slate-300 text-sm font-medium mb-2">
-                      ქალაქი{" "}
-                      <span className="text-slate-500 font-normal">
-                        (მიწოდების ტარიფი)
-                      </span>
-                    </label>
-                    <DeliveryCitySelect
-                      id="cart-delivery-city"
-                      value={deliveryCity}
-                      onChange={setDeliveryCity}
-                    />
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                      ან მდებარეობა ქვემოთ (ბრაუზერის ნებართვით).
-                    </p>
-                  </div>
-                )}
-
                 <div className="mb-6 space-y-2.5 text-sm">
-                  <div className="flex justify-between text-slate-500">
-                    <span>ნივთები ({cart.itemCount})</span>
-                  </div>
                   <div className="flex justify-between text-slate-300">
-                    <span>ქვეჯამი</span>
+                    <span>ქვეჯამი ({cart.itemCount} ნივთი)</span>
                     <span className="tabular-nums text-slate-100 font-medium">
                       ₾{cart.subtotal.toFixed(2)}
                     </span>
                   </div>
-
-                  <div className="flex justify-between text-slate-300 pt-2 border-t border-slate-700/60">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-                      <span className="text-sm">მიწოდება</span>
-                      {deliveryType !== "pickup" &&
-                        (locationStatus === "denied" ||
-                          locationStatus === "error") &&
-                        !deliveryCity && (
-                          <button
-                            type="button"
-                            onClick={() => requestDeliveryLocation(true)}
-                            className="text-xs text-orange-400 hover:text-orange-300 underline underline-offset-2">
-                            განახლება
-                          </button>
-                        )}
-                    </div>
-                    {cart.deliveryFeeResolved ? (
-                      <span className="tabular-nums text-slate-100 font-medium shrink-0">
-                        ₾{cart.deliveryFee.toFixed(2)}
-                      </span>
-                    ) : (
-                      <span className="text-slate-500 shrink-0">—</span>
-                    )}
-                  </div>
-                  {cart.deliveryFeeResolved && deliveryType === "pickup" && (
-                    <p className="text-xs text-slate-500">
-                      თვითგატანა — მიწოდება ₾0
-                    </p>
-                  )}
-                  {cart.deliveryFeeResolved &&
-                    deliveryType !== "pickup" &&
-                    cart.deliveryLocationName && (
-                      <p className="text-xs text-slate-500">
-                        {DELIVERY_BASE_LABEL} → {cart.deliveryLocationName}
-                        {cart.deliveryDistanceKm != null
-                          ? ` · ~${cart.deliveryDistanceKm} km`
-                          : ""}
-                      </p>
-                    )}
-
-                  {deliveryType !== "pickup" && !cart.deliveryFeeResolved && (
-                    <div className="flex items-start gap-2.5 p-3 rounded-lg bg-slate-900/40 border border-slate-700/80">
-                      <MapPin className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-300 leading-relaxed">
-                          აირჩიეთ ქალაქი ზემოთ ან მიუთითეთ მდებარეობა.
-                        </p>
-                        {permissionDeniedHelp && (
-                          <p className="text-xs text-orange-400/90 mt-2">
-                            ნებართვა უარყოფილია — ბრაუზერში ჩართეთ მდებარეობა და
-                            სცადეთ ხელახლა.
-                          </p>
-                        )}
-                      </div>
-                      {permissionDeniedHelp && (
-                        <button
-                          type="button"
-                          onClick={clearPermissionDeniedHelp}
-                          className="text-slate-500 hover:text-slate-300 text-lg leading-none shrink-0"
-                          aria-label="დახურვა">
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  )}
-
+                  <p className="text-xs text-slate-500">
+                    მიწოდების საფასური შემდეგ ნაბიჯზე დაემატება.
+                  </p>
                   <div className="flex justify-between items-baseline pt-3 mt-1 border-t border-slate-700/80">
                     <span className="text-sm font-medium text-slate-200">
-                      სულ
+                      ჯამი
                     </span>
                     <span className="text-xl font-semibold tabular-nums text-orange-400">
-                      ₾{cart.total.toFixed(2)}
+                      ₾{cart.subtotal.toFixed(2)}
                     </span>
                   </div>
                 </div>
 
-                <div className="mb-5 pt-5 border-t border-slate-700/80">
-                  <p className="text-sm text-slate-300 mb-0.5">
-                    დაგვიკავშირდით
-                  </p>
-                  <p className="text-xs text-slate-500 mb-3">
-                    მიწოდება, ტარიფი ან შეკვეთა
-                  </p>
-                  <ContactQuickActions />
-                </div>
-                {/* 
-              {cart.deliveryFeeResolved ? (
                 <Link
-                  href="/checkout"
-                  // RESTORE_CHECKOUT_LOGIN_GATE: href={user ? "/checkout" : "/login?redirect=/checkout"}
-                  className="w-full text-center px-6 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all shadow-lg hover:shadow-xl min-h-[52px] flex items-center justify-center mb-3">
-                  გადახდა
+                  href={deliveryHref}
+                  className="ds-btn-primary w-full text-center px-6 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg shadow-lg min-h-[56px] flex items-center justify-center gap-2 mb-3 text-base">
+                  <Truck className="w-5 h-5" />
+                  {user ? "შემდეგი: მიწოდების არჩევა" : "შესვლა და შეკვეთა"}
                 </Link>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="w-full text-center px-6 py-4 bg-slate-700 text-slate-400 font-bold rounded-lg border border-slate-600 min-h-[52px] flex items-center justify-center mb-3 cursor-not-allowed">
-                  {deliveryType === "pickup"
-                    ? "გადახდა"
-                    : "აირჩიეთ ქალაქი ან მდებარეობა"}
-                </button>
-              )} */}
 
-                {/* Continue Shopping Link */}
                 <Link
                   href="/products"
                   className="w-full text-center px-4 py-2.5 text-slate-400 hover:text-slate-200 text-sm flex items-center justify-center gap-2 rounded-lg border border-transparent hover:border-slate-600 hover:bg-slate-900/30 transition-colors">
@@ -334,7 +181,6 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* Mobile: keep total in reach while scrolling long carts */}
       <div
         className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-700/90 bg-slate-900/95 backdrop-blur-md px-4 py-3 shadow-[0_-10px_40px_rgba(0,0,0,0.45)]"
         style={{
@@ -342,19 +188,19 @@ export default function CartPage() {
         }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs text-slate-500">სულ</p>
+            <p className="text-xs text-slate-500">ჯამი</p>
             <p className="text-lg font-semibold tabular-nums text-orange-400">
-              ₾{cart.total.toFixed(2)}
+              ₾{cart.subtotal.toFixed(2)}
             </p>
             <p className="text-[11px] text-slate-500 truncate">
               {cart.itemCount} ნივთი
             </p>
           </div>
-          <a
-            href="#cart-summary"
-            className="shrink-0 text-sm font-medium text-orange-400 hover:text-orange-300 underline underline-offset-2">
-            სრული შეჯამება
-          </a>
+          <Link
+            href={deliveryHref}
+            className="ds-btn-primary shrink-0 px-5 py-3 bg-linear-to-r from-orange-500 to-yellow-500 text-white text-sm font-bold rounded-lg min-h-[48px] flex items-center">
+            {user ? "მიწოდება" : "შესვლა"}
+          </Link>
         </div>
       </div>
     </div>

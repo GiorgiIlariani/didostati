@@ -2,20 +2,56 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const { createOrderNotification, createPaymentNotification } = require('../services/notificationService');
 const { ensureHttpsImageUrls } = require('../utils/imageUrl');
+const { escapeRegex } = require('../utils/escapeRegex');
+const { verifyOtpToken, normalizePhone } = require('../controllers/otpController');
+const { getDeliveryFee } = require('../utils/deliveryFee');
+
+// Anti-abuse: caps how many orders one phone/account can place per day.
+const MAX_ORDERS_PER_DAY = 3;
 
 // Admin: Get all orders
 exports.getAllOrders = async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
-    
+    const {
+      status,
+      city,
+      dateFrom,
+      dateTo,
+      search,
+      page = 1,
+      limit = 20,
+    } = req.query;
+
     const query = {};
     if (status) {
       query.status = status;
+    }
+    if (city) {
+      query['shippingAddress.city'] = new RegExp(`^${escapeRegex(String(city).trim())}$`, 'i');
+    }
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+    if (search && String(search).trim()) {
+      const s = escapeRegex(String(search).trim());
+      query.$or = [
+        { orderNumber: new RegExp(s, 'i') },
+        { 'customer.name': new RegExp(s, 'i') },
+        { 'customer.phone': new RegExp(s, 'i') },
+        { 'customer.email': new RegExp(s, 'i') },
+      ];
     }
 
     const orders = await Order.find(query)
       .populate('items.product', 'name images brand')
       .populate('user', 'name email')
+      .populate('assignedManager', 'name email')
       .sort('-createdAt')
       .limit(Number(limit))
       .skip((Number(page) - 1) * Number(limit))
@@ -45,29 +81,76 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// Admin: Update order status
-exports.updateOrderStatus = async (req, res) => {
+// Admin: Get single order
+exports.getAdminOrderById = async (req, res) => {
   try {
-    const { status, paymentStatus } = req.body;
-    const orderId = req.params.id;
+    const order = await Order.findById(req.params.id)
+      .populate('items.product', 'name images brand')
+      .populate('user', 'name email')
+      .populate('assignedManager', 'name email')
+      .populate('statusHistory.changedBy', 'name email');
 
-    if (!status && !paymentStatus) {
-      return res.status(400).json({
+    if (!order) {
+      return res.status(404).json({
         status: 'error',
-        message: 'Status or paymentStatus is required'
+        message: 'Order not found'
       });
     }
 
-    const updateData = {};
+    res.json(
+      ensureHttpsImageUrls({
+        status: 'success',
+        data: { order }
+      })
+    );
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message
+    });
+  }
+};
+
+const VALID_ORDER_STATUSES = [
+  'pending',
+  'confirmed',
+  'processing',
+  'ready_to_ship',
+  'shipped',
+  'delivered',
+  'cancelled',
+];
+
+// Admin: Update order status
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { status, paymentStatus, assignedManager, note } = req.body;
+    const orderId = req.params.id;
+
+    if (!status && !paymentStatus && assignedManager === undefined) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Status, paymentStatus, or assignedManager is required'
+      });
+    }
+
+    const oldOrder = await Order.findById(orderId);
+    if (!oldOrder) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Order not found'
+      });
+    }
+
+    const setFields = {};
     if (status) {
-      const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-      if (!validStatuses.includes(status)) {
+      if (!VALID_ORDER_STATUSES.includes(status)) {
         return res.status(400).json({
           status: 'error',
           message: 'Invalid status'
         });
       }
-      updateData.status = status;
+      setFields.status = status;
     }
 
     if (paymentStatus) {
@@ -78,30 +161,39 @@ exports.updateOrderStatus = async (req, res) => {
           message: 'Invalid payment status'
         });
       }
-      updateData.paymentStatus = paymentStatus;
+      setFields.paymentStatus = paymentStatus;
     }
 
-    // Get old order to check what changed
-    const oldOrder = await Order.findById(orderId);
-    
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      updateData,
-      { new: true, runValidators: true }
-    )
+    if (assignedManager !== undefined) {
+      setFields.assignedManager = assignedManager || null;
+    }
+
+    const updateOps = {};
+    if (Object.keys(setFields).length > 0) {
+      updateOps.$set = setFields;
+    }
+    if (status && oldOrder.status !== status) {
+      updateOps.$push = {
+        statusHistory: {
+          status,
+          changedBy: req.user?._id,
+          note: note || '',
+          at: new Date(),
+        },
+      };
+    }
+
+    const order = await Order.findByIdAndUpdate(orderId, updateOps, {
+      new: true,
+      runValidators: true,
+    })
       .populate('items.product', 'name images brand')
-      .populate('user', 'name email');
-
-    if (!order) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Order not found'
-      });
-    }
+      .populate('user', 'name email')
+      .populate('assignedManager', 'name email')
+      .populate('statusHistory.changedBy', 'name email');
 
     // Create notifications if user exists and status changed
     if (order.user) {
-      // Order status notification
       if (status && oldOrder.status !== status) {
         await createOrderNotification(
           order.user._id,
@@ -111,7 +203,6 @@ exports.updateOrderStatus = async (req, res) => {
         );
       }
 
-      // Payment status notification
       if (paymentStatus && oldOrder.paymentStatus !== paymentStatus) {
         await createPaymentNotification(
           order.user._id,
@@ -143,8 +234,51 @@ exports.createOrder = async (req, res) => {
       items,
       shippingAddress,
       paymentMethod,
-      notes
+      notes,
+      otpToken,
     } = req.body;
+
+    // OTP verification — required unless logged-in user phone matches customer phone
+    let verifiedPhone = verifyOtpToken(otpToken, 'order');
+    if (!verifiedPhone && req.user?.phone) {
+      const userPhone = normalizePhone(req.user.phone);
+      const requestPhone = normalizePhone(
+        req.body.customer?.phone || req.body.phone || ''
+      );
+      if (userPhone && requestPhone && userPhone === requestPhone) {
+        verifiedPhone = userPhone;
+      }
+    }
+    if (!verifiedPhone) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'ტელეფონის დადასტურება საჭიროა (OTP) ან შესვლა ნომრით',
+      });
+    }
+
+    // Must be logged in
+    if (!req.user) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'შეკვეთისთვის ავტორიზაცია სავალდებულოა',
+      });
+    }
+
+    // Anti-abuse: cap orders per phone/account within a rolling 24h window.
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentOrderCount = await Order.countDocuments({
+      createdAt: { $gte: oneDayAgo },
+      $or: [
+        { user: req.user._id },
+        { 'customer.phone': verifiedPhone },
+      ],
+    });
+    if (recentOrderCount >= MAX_ORDERS_PER_DAY) {
+      return res.status(429).json({
+        status: 'error',
+        message: `დღეში მაქსიმუმ ${MAX_ORDERS_PER_DAY} შეკვეთის გაფორმება შესაძლებელია. სცადეთ მოგვიანებით ან დაგვიკავშირდით.`,
+      });
+    }
 
     // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -168,28 +302,40 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // Get user info (if logged in) or use customer info from request
-    let customerInfo = {};
-    if (req.user) {
-      customerInfo = {
-        name: req.user.name,
-        email: req.user.email,
-        phone: req.body.phone || req.user.phone || ''
-      };
-    } else {
-      customerInfo = {
-        name: req.body.customer?.name || req.body.name || '',
-        email: req.body.customer?.email || req.body.email || '',
-        phone: req.body.customer?.phone || req.body.phone || ''
-      };
-    }
+    // Customer snapshot from form, with auth user fallbacks
+    const customerInfo = {
+      name: (req.body.customer?.name || req.body.name || req.user.name || '').trim(),
+      email: (
+        req.body.customer?.email ||
+        req.body.email ||
+        req.user.email ||
+        ''
+      )
+        .trim()
+        .toLowerCase(),
+      phone: req.body.customer?.phone || req.body.phone || req.user.phone || '',
+    };
 
-    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone) {
+    if (!customerInfo.name || !customerInfo.phone) {
       return res.status(400).json({
         status: 'error',
-        message: 'Customer name, email, and phone are required'
+        message: 'სახელი და ტელეფონი სავალდებულოა',
       });
     }
+
+    // Phone-only accounts may have no email — use stable placeholder
+    if (!customerInfo.email) {
+      customerInfo.email = `${verifiedPhone}@phone.didostati.local`;
+    }
+
+    const customerPhone = normalizePhone(customerInfo.phone);
+    if (!customerPhone || customerPhone !== verifiedPhone) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'OTP ტელეფონი არ ემთხვევა შეკვეთის ტელეფონს',
+      });
+    }
+    customerInfo.phone = customerPhone;
 
     // Calculate totals and validate products
     let subtotal = 0;
@@ -197,7 +343,7 @@ exports.createOrder = async (req, res) => {
 
     for (const item of items) {
       const product = await Product.findById(item.productId);
-      if (!product) {
+      if (!product || product.isDeleted || !product.isActive) {
         return res.status(404).json({
           status: 'error',
           message: `Product ${item.productId} not found`
@@ -224,10 +370,11 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    const deliveryFee = req.body.deliveryFee ?? 0;
     const deliveryType = ['standard', 'express', 'pickup'].includes(req.body.deliveryType)
       ? req.body.deliveryType
       : 'standard';
+    // Never trust the client-sent fee outright — recompute/clamp it server-side.
+    const deliveryFee = getDeliveryFee(deliveryType, shippingAddress.city, req.body.deliveryFee);
     const totalAmount = subtotal + deliveryFee;
 
     const order = await Order.create({
@@ -246,6 +393,13 @@ exports.createOrder = async (req, res) => {
       paymentMethod,
       paymentStatus: 'pending',
       status: 'pending',
+      statusHistory: [
+        {
+          status: 'pending',
+          note: 'შეკვეთა შექმნილია',
+          at: new Date(),
+        },
+      ],
       notes: notes || '',
       ...(req.user && { user: req.user._id })
     });
@@ -266,7 +420,7 @@ exports.createOrder = async (req, res) => {
       await createOrderNotification(
         order.user._id,
         order.orderNumber,
-        'confirmed',
+        'pending',
         order._id.toString()
       );
     }

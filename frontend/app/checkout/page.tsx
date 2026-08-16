@@ -1,22 +1,29 @@
 "use client";
 
 /**
- * Checkout Page
- * Simple order placement form:
- * - Contact information (phone)
- * - Shipping address (city, street, region, postalCode)
- * - Payment method (cash, card, bank_transfer)
- * - Notes
- * - Submits order via orderAPI.create, clears cart, redirects to order details
- * - Guest checkout: name, email, phone (backend requires all three when not logged in)
+ * Checkout form — saves draft + sends OTP, then redirects to /checkout/verify.
  */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useCart } from "@/lib/context/CartContext";
-import { orderAPI } from "@/lib/api";
-import { ArrowLeft, CreditCard, CheckCircle, Loader2 } from "lucide-react";
+import { otpAPI, orderAPI } from "@/lib/api";
+import {
+  saveCheckoutDraft,
+  saveCheckoutSuccess,
+  clearCheckoutDraft,
+} from "@/lib/checkoutDraft";
+import CheckoutSteps from "@/app/components/CheckoutSteps";
+import ContactQuickActions from "@/app/components/ContactQuickActions";
+import { ArrowLeft, CreditCard, Loader2, Smartphone, CheckCircle } from "lucide-react";
+
+function normalizePhoneDigits(raw: string) {
+  const digits = raw.replace(/\D/g, "");
+  if (/^5\d{8}$/.test(digits)) return digits;
+  if (/^9955\d{8}$/.test(digits)) return digits.slice(3);
+  return null;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -29,15 +36,19 @@ export default function CheckoutPage() {
     phone: "",
     city: "",
     street: "",
-    region: "",
-    postalCode: "",
     paymentMethod: "cash" as "cash" | "card" | "bank_transfer",
     notes: "",
   });
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [orderSuccess, setOrderSuccess] = useState<any>(null);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/login?redirect=/checkout");
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -49,27 +60,25 @@ export default function CheckoutPage() {
     }));
   }, [user, authLoading]);
 
-  /*
-   * RESTORE_CHECKOUT_REQUIRES_LOGIN — gate checkout to logged-in users only:
-   * useEffect(() => {
-   *   if (authLoading) return;
-   *   if (!user) {
-   *     router.replace("/login?redirect=/checkout");
-   *     return;
-   *   }
-   * }, [user, authLoading, router]);
-   *
-   * if (authLoading) {
-   *   return (
-   *     <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-   *       <div className="animate-spin w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full" />
-   *     </div>
-   *   );
-   * }
-   * if (!user) return null;
-   */
+  // Prefill city from cart delivery selection
+  useEffect(() => {
+    if (cart.deliveryLocationName && !formData.city) {
+      setFormData((prev) => ({
+        ...prev,
+        city: cart.deliveryLocationName || prev.city,
+      }));
+    }
+  }, [cart.deliveryLocationName, formData.city]);
 
-  if (cart.itemCount === 0 && !orderSuccess) {
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (cart.itemCount === 0) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="max-w-md text-center">
@@ -90,7 +99,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (cart.itemCount > 0 && !cart.deliveryFeeResolved && !orderSuccess) {
+  if (!cart.deliveryFeeResolved) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
         <div className="max-w-md text-center">
@@ -98,14 +107,13 @@ export default function CheckoutPage() {
             მიწოდების პარამეტრები
           </h1>
           <p className="text-slate-400 mb-6">
-            კალათაში აირჩიეთ მიწოდების ტიპი (მიწოდება / ექსპრეს / თვითგატანა) და
-            საჭიროების შემთხვევაში ქალაქი ან მდებარეობა.
+            ჯერ აირჩიეთ მიწოდების ტიპი და ქალაქი.
           </p>
           <Link
-            href="/cart"
+            href="/checkout/delivery"
             className="inline-flex items-center gap-2 px-6 py-3 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all">
             <ArrowLeft className="w-4 h-4" />
-            კალათაში გადასვლა
+            მიწოდების არჩევა
           </Link>
         </div>
       </div>
@@ -123,103 +131,109 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setSubmitting(true);
     setError("");
 
     try {
-      const payload = {
+      const draft = {
         items: cart.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
         shippingAddress: {
-          city: formData.city,
-          street: formData.street || undefined,
-          region: formData.region || undefined,
-          postalCode: formData.postalCode || undefined,
+          city: formData.city.trim(),
+          street: formData.street.trim() || undefined,
         },
         deliveryFee: cart.deliveryFee,
         deliveryType: cart.deliveryType,
-        phone: formData.phone,
+        phone: formData.phone.trim(),
         name: formData.name.trim(),
-        email: formData.email.trim(),
+        // Omit rather than send "" — express-validator's optional() treats
+        // an empty string as present, so it must be entirely absent to be
+        // truly optional.
+        email: formData.email.trim() || undefined,
         customer: {
           name: formData.name.trim(),
-          email: formData.email.trim(),
+          email: formData.email.trim() || undefined,
           phone: formData.phone.trim(),
         },
         paymentMethod: formData.paymentMethod,
-        notes: formData.notes || undefined,
+        notes: formData.notes.trim() || undefined,
+        total: cart.total,
       };
 
-      const res = await orderAPI.create(payload);
-      if (res.status === "success") {
-        setOrderSuccess(res.data.order);
+      const formPhone = normalizePhoneDigits(draft.phone);
+      const userPhone = user?.phone
+        ? normalizePhoneDigits(user.phone)
+        : null;
+      const phoneAlreadyVerified =
+        !!formPhone && !!userPhone && formPhone === userPhone;
+
+      // Phone login users: skip second OTP, place order directly
+      if (phoneAlreadyVerified) {
+        const createRes = await orderAPI.create(draft);
+        if (createRes.status !== "success" || !createRes.data?.order) {
+          setError(createRes.message || "შეკვეთის შექმნა ვერ მოხერხდა");
+          return;
+        }
+        clearCheckoutDraft();
         clearCart();
-      } else {
-        setError(res.message || "შეკვეთის გაფორმება ვერ მოხერხდა.");
+        saveCheckoutSuccess({
+          _id: createRes.data.order._id,
+          orderNumber: createRes.data.order.orderNumber,
+        });
+        router.replace("/checkout/success");
+        return;
       }
+
+      const res = await otpAPI.send(draft.phone, "order");
+      if (res.status !== "success") {
+        setError(res.message || "OTP გაგზავნა ვერ მოხერხდა");
+        return;
+      }
+
+      saveCheckoutDraft(draft);
+      if (res.data?.devCode) {
+        sessionStorage.setItem("didostati_otp_dev_code", res.data.devCode);
+      } else {
+        sessionStorage.removeItem("didostati_otp_dev_code");
+      }
+      router.push("/checkout/verify");
     } catch (err: any) {
-      setError(err.message || "შეკვეთის გაფორმება ვერ მოხერხდა.");
+      setError(err.message || "შეკვეთა ვერ გაფორმდა");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (orderSuccess) {
-    return (
-      <div className="min-h-screen bg-slate-900 py-10 px-4">
-        <div className="max-w-xl mx-auto bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
-          <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-slate-100 mb-2">
-            შეკვეთა წარმატებით გაფორმდა!
-          </h1>
-          <p className="text-slate-400 mb-4">
-            თქვენი შეკვეთის ნომერია{" "}
-            <span className="font-semibold text-slate-100">
-              {orderSuccess.orderNumber}
-            </span>
-            .
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
-            <Link
-              href={`/orders/${orderSuccess._id}`}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all">
-              შეკვეთის დეტალები
-            </Link>
-            <Link
-              href="/products"
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-800 text-slate-100 font-semibold rounded-lg border border-slate-600 hover:bg-slate-700 transition-all">
-              გაგრძელება ყიდვა
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-900 py-8 px-4">
+    <div className="min-h-screen bg-slate-900 py-8 px-4 ds-fade-in">
       <div className="max-w-4xl mx-auto">
+        <CheckoutSteps current="details" />
         <div className="flex items-center justify-between mb-6">
-          <button
-            type="button"
-            onClick={() => router.back()}
+          <Link
+            href="/checkout/delivery"
             className="inline-flex items-center gap-2 text-slate-300 hover:text-orange-400 transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            უკან დაბრუნება
-          </button>
-          <div className="flex items-center gap-2 text-slate-400">
+            მიწოდებაზე დაბრუნება
+          </Link>
+          <div className="flex items-center gap-2 text-slate-300">
             <CreditCard className="w-5 h-5" />
-            <span className="text-sm">სულ: ₾{cart.total.toFixed(2)}</span>
+            <span className="text-base font-semibold tabular-nums">
+              სულ: ₾{cart.total.toFixed(2)}
+            </span>
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
-          <h1 className="text-2xl font-bold text-slate-100 mb-4">
-            შეკვეთის გაფორმება
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 sm:p-6 shadow-lg">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 mb-2">
+            შეკვეთის დეტალები
           </h1>
+          <p className="text-base text-slate-400 mb-4">
+            {user?.phone
+              ? "შეავსეთ მისამართი და დაადასტურეთ — თუ ნომერი ემთხვევა ანგარიშს, SMS აღარ დაგჭირდებათ."
+              : "შეავსეთ ფორმა — შემდეგ SMS კოდით დავადასტურებთ ტელეფონს."}
+          </p>
 
           {error && (
             <p className="mb-4 text-sm text-red-400 border border-red-500/40 bg-red-500/10 rounded-lg px-3 py-2">
@@ -228,7 +242,6 @@ export default function CheckoutPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Contact */}
             <div>
               <h2 className="text-lg font-semibold text-slate-100 mb-3">
                 საკონტაქტო ინფორმაცია
@@ -250,7 +263,7 @@ export default function CheckoutPage() {
                 </div>
                 <div>
                   <label className="block text-sm text-slate-300 mb-1">
-                    ელფოსტა
+                    ელფოსტა (არასავალდებულო)
                   </label>
                   <input
                     type="email"
@@ -259,12 +272,11 @@ export default function CheckoutPage() {
                     onChange={handleChange}
                     autoComplete="email"
                     className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
-                    required
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-slate-300 mb-1">
-                    ტელეფონი
+                    ტელეფონი (5XX XXX XXX)
                   </label>
                   <input
                     type="tel"
@@ -272,6 +284,7 @@ export default function CheckoutPage() {
                     value={formData.phone}
                     onChange={handleChange}
                     autoComplete="tel"
+                    placeholder="5XXXXXXXX"
                     className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
                     required
                   />
@@ -279,19 +292,10 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Shipping */}
             <div>
               <h2 className="text-lg font-semibold text-slate-100 mb-3">
                 მიწოდების მისამართი
               </h2>
-              <p className="text-xs text-slate-500 mb-3">
-                მიწოდების ორიენტირებითი ფასები ქალაქის მიხედვით:{" "}
-                <Link
-                  href="/shipping"
-                  className="text-orange-400 hover:text-orange-300 underline-offset-2 hover:underline">
-                  ნახეთ სრულად
-                </Link>
-              </p>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-slate-300 mb-1">
@@ -302,50 +306,31 @@ export default function CheckoutPage() {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
+                    placeholder="მაგ: თბილისი, გორი"
                     className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
                     required
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-slate-300 mb-1">
-                    ქუჩა / მისამართი
+                    რაიონი ან ქუჩა
                   </label>
                   <input
                     type="text"
                     name="street"
                     value={formData.street}
                     onChange={handleChange}
+                    placeholder="რაიონი / ქუჩა / სოფელი"
                     className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-300 mb-1">
-                    რეგიონი
-                  </label>
-                  <input
-                    type="text"
-                    name="region"
-                    value={formData.region}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-300 mb-1">
-                    საფოსტო კოდი
-                  </label>
-                  <input
-                    type="text"
-                    name="postalCode"
-                    value={formData.postalCode}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none"
+                    required
                   />
                 </div>
               </div>
+              <p className="text-xs text-slate-500 mt-2">
+                ქალაქში — მიუთითეთ რაიონი ან ქუჩა; სოფელში — სოფლის/რაიონის სახელი
+              </p>
             </div>
 
-            {/* Payment */}
             <div>
               <h2 className="text-lg font-semibold text-slate-100 mb-3">
                 გადახდის მეთოდი
@@ -377,10 +362,9 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Notes */}
             <div>
               <h2 className="text-lg font-semibold text-slate-100 mb-3">
-                დამატებითი კომენტარი
+                კომენტარი (არასავალდებულო)
               </h2>
               <textarea
                 name="notes"
@@ -388,7 +372,19 @@ export default function CheckoutPage() {
                 onChange={handleChange}
                 rows={4}
                 className="w-full px-4 py-3 text-base bg-slate-900 border border-slate-700 rounded-lg text-slate-100 focus:border-orange-500 outline-none resize-none"
-                placeholder="თუ გაქვთ რაიმე დამატებითი სურვილი ან მითითება, ჩაწერეთ აქ..."
+                placeholder="დამატებითი მითითება..."
+              />
+            </div>
+
+            <div className="pt-4 border-t border-slate-700">
+              <p className="text-base font-medium text-slate-200 mb-1">
+                დახმარება გჭირდებათ?
+              </p>
+              <p className="text-sm text-slate-500 mb-3">
+                დაგვირეკეთ ან მოგვწერეთ WhatsApp-ზე — დაგეხმარებით შეკვეთაში
+              </p>
+              <ContactQuickActions
+                whatsappMessage="გამარჯობა, შეკვეთის გაფორმებაში მჭირდება დახმარება — Didostati."
               />
             </div>
 
@@ -396,16 +392,21 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center gap-2 px-6 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed min-h-[52px]">
+                className="ds-btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-linear-to-r from-orange-500 to-yellow-500 text-white text-base font-bold rounded-lg shadow-lg disabled:opacity-60 disabled:cursor-not-allowed min-h-[56px]">
                 {submitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>გაფორმება...</span>
+                    <span>დამუშავება...</span>
+                  </>
+                ) : user?.phone ? (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    <span>შეკვეთის დადასტურება</span>
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="w-5 h-5" />
-                    <span>შეკვეთის გაფორმება</span>
+                    <Smartphone className="w-5 h-5" />
+                    <span>შეკვეთის დადასტურება</span>
                   </>
                 )}
               </button>

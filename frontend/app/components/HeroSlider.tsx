@@ -1,23 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Package, Clock } from "lucide-react";
 import { advertisementAPI } from "@/lib/api";
+
 interface HeroSlide {
   _id: string;
   title: string;
   type: "video" | "image" | "banner";
   mediaUrl: string;
+  link?: string;
 }
 
 const DEFAULT_IMAGE = "/assets/images/hero-default.png";
+
+function slideHref(link?: string): string | null {
+  if (!link?.trim()) return null;
+  return link.trim();
+}
 
 const HeroSlider = () => {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [fading, setFading] = useState(false);
   const touchStartX = useRef<number | null>(null);
+  const touchMoved = useRef(false);
 
   useEffect(() => {
     async function fetchSlides() {
@@ -36,30 +44,25 @@ const HeroSlider = () => {
   }, []);
 
   const hasMultiple = slides.length > 1;
-  const currentSlide = slides[currentIndex];
 
-  const changeSlide = (nextIndex: number) => {
-    if (nextIndex === currentIndex || fading) return;
-    setFading(true);
-    setTimeout(() => {
-      setCurrentIndex(nextIndex);
-      setFading(false);
-    }, 200);
+  const goTo = (index: number) => {
+    if (index === currentIndex) return;
+    setCurrentIndex(index);
   };
-
-  const goTo = (index: number) => changeSlide(index);
   const goPrev = () =>
-    changeSlide((currentIndex - 1 + slides.length) % slides.length);
-  const goNext = () => changeSlide((currentIndex + 1) % slides.length);
+    goTo((currentIndex - 1 + slides.length) % slides.length);
+  const goNext = () => goTo((currentIndex + 1) % slides.length);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    touchMoved.current = false;
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null || !hasMultiple) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 40) {
+      touchMoved.current = true;
       if (diff > 0) goNext();
       else goPrev();
     }
@@ -69,51 +72,12 @@ const HeroSlider = () => {
   useEffect(() => {
     if (!hasMultiple) return;
     const interval = setInterval(() => {
-      setFading(true);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % slides.length);
-        setFading(false);
-      }, 200);
+      setCurrentIndex((prev) => (prev + 1) % slides.length);
     }, 8000);
     return () => clearInterval(interval);
   }, [hasMultiple, slides.length]);
 
   const isDefault = !loading && slides.length === 0;
-
-  const renderSlideMedia = () => {
-    if (!currentSlide) return null;
-
-    const fadeClass = `transition-opacity duration-300 ${
-      fading ? "opacity-0" : "opacity-100"
-    }`;
-    const mediaClass = "block w-full h-auto";
-
-    return (
-      <div
-        key={currentSlide._id}
-        className={`rounded-xl border border-slate-700/80 p-1 sm:rounded-2xl sm:p-1.5 ${fadeClass}`}>
-        <div className="overflow-hidden rounded-lg sm:rounded-xl">
-          {currentSlide.type === "image" ? (
-            <img
-              src={currentSlide.mediaUrl}
-              alt={currentSlide.title}
-              className={mediaClass}
-            />
-          ) : (
-            <video
-              src={currentSlide.mediaUrl}
-              autoPlay
-              muted
-              loop
-              playsInline
-              className={mediaClass}
-              aria-label={currentSlide.title}
-            />
-          )}
-        </div>
-      </div>
-    );
-  };
 
   if (loading) {
     return (
@@ -151,8 +115,74 @@ const HeroSlider = () => {
 
   return (
     <div className="relative">
-      <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-        {renderSlideMedia()}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative rounded-xl border border-slate-700/80 p-1 sm:rounded-2xl sm:p-1.5">
+        <div className="overflow-hidden rounded-lg sm:rounded-xl">
+          <div className="relative">
+            {slides.map((slide, index) => {
+              const href = slideHref(slide.link);
+              const media =
+                slide.type === "image" ? (
+                  <img
+                    src={slide.mediaUrl}
+                    alt={slide.title}
+                    className="block w-full h-auto"
+                  />
+                ) : (
+                  <video
+                    src={slide.mediaUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="block w-full h-auto"
+                    aria-label={slide.title}
+                  />
+                );
+
+              return (
+                <div
+                  key={slide._id}
+                  className={`transition-opacity duration-500 ease-in-out ${
+                    index === currentIndex
+                      ? "opacity-100 relative"
+                      : "opacity-0 absolute inset-0 pointer-events-none"
+                  }`}
+                  aria-hidden={index !== currentIndex}>
+                  {href ? (
+                    href.startsWith("http://") || href.startsWith("https://") ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block cursor-pointer"
+                        onClick={(e) => {
+                          if (touchMoved.current) e.preventDefault();
+                        }}
+                        aria-label={slide.title}>
+                        {media}
+                      </a>
+                    ) : (
+                      <Link
+                        href={href}
+                        className="block cursor-pointer"
+                        onClick={(e) => {
+                          if (touchMoved.current) e.preventDefault();
+                        }}
+                        aria-label={slide.title}>
+                        {media}
+                      </Link>
+                    )
+                  ) : (
+                    media
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {hasMultiple && (

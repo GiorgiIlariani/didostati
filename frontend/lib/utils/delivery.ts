@@ -43,16 +43,16 @@ export type ShippingWizardCity = {
  * Checkout-ში გამოიყენება feeSmallTruck (პატარა მანქანა).
  */
 export const SHIPPING_WIZARD_CITIES: ShippingWizardCity[] = [
-  { id: "zugdidi", name: "ზუგდიდი", lat: 42.5088, lng: 41.8709, feeSmallTruck: 280, feeBigTruck: 390 },
-  { id: "poti", name: "ფოთი", lat: 42.1462, lng: 41.6718, feeSmallTruck: 230, feeBigTruck: 320 },
-  { id: "kutaisi", name: "ქუთაისი", lat: 42.2679, lng: 42.6946, feeSmallTruck: 200, feeBigTruck: 280 },
-  { id: "batumi", name: "ბათუმი", lat: 41.6423, lng: 41.6339, feeSmallTruck: 400, feeBigTruck: 560 },
-  { id: "khashuri", name: "ხაშური", lat: 41.9941, lng: 43.5991, feeSmallTruck: 85, feeBigTruck: 118 },
-  { id: "gori", name: "გორი", lat: 41.985, lng: 44.1098, feeSmallTruck: 30, feeBigTruck: 45 },
-  { id: "telavi", name: "თელავი", lat: 41.9197, lng: 45.4732, feeSmallTruck: 150, feeBigTruck: 210 },
-  { id: "mtskheta", name: "მცხეთა", lat: 41.8451, lng: 44.7186, feeSmallTruck: 70, feeBigTruck: 100 },
-  { id: "tbilisi", name: "თბილისი", lat: 41.7151, lng: 44.8271, feeSmallTruck: 50, feeBigTruck: 72 },
-  { id: "rustavi", name: "რუსთავი", lat: 41.5495, lng: 45.0111, feeSmallTruck: 150, feeBigTruck: 75 },
+  { id: "zugdidi", name: "ზუგდიდი", lat: 42.5088, lng: 41.8709, feeSmallTruck: 280, feeBigTruck: 500 },
+  { id: "poti", name: "ფოთი", lat: 42.1462, lng: 41.6718, feeSmallTruck: 230, feeBigTruck: 500 },
+  { id: "kutaisi", name: "ქუთაისი", lat: 42.2679, lng: 42.6946, feeSmallTruck: 200, feeBigTruck: 300 },
+  { id: "batumi", name: "ბათუმი", lat: 41.6423, lng: 41.6339, feeSmallTruck: 400, feeBigTruck: 600 },
+  { id: "khashuri", name: "ხაშური", lat: 41.9941, lng: 43.5991, feeSmallTruck: 85, feeBigTruck: 200 },
+  { id: "gori", name: "გორი", lat: 41.985, lng: 44.1098, feeSmallTruck: 30, feeBigTruck: 150 },
+  { id: "telavi", name: "თელავი", lat: 41.9197, lng: 45.4732, feeSmallTruck: 150, feeBigTruck: 300 },
+  { id: "mtskheta", name: "მცხეთა", lat: 41.8451, lng: 44.7186, feeSmallTruck: 70, feeBigTruck: 150 },
+  { id: "tbilisi", name: "თბილისი", lat: 41.7151, lng: 44.8271, feeSmallTruck: 50, feeBigTruck: 100 },
+  { id: "rustavi", name: "რუსთავი", lat: 41.5495, lng: 45.0111, feeSmallTruck: 150, feeBigTruck: 200 },
 ];
 
 /**

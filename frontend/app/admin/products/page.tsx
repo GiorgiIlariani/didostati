@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { productAPI } from "@/lib/api";
 import { useAuth } from "@/lib/context/AuthContext";
-import { isAllowedAdmin } from "@/lib/admin";
+import { isAllowedAdmin, isFullAdmin } from "@/lib/admin";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -16,25 +16,87 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  Download,
 } from "lucide-react";
 
 interface Product {
   _id: string;
   name: string;
   brand: string;
+  description?: string;
   price: number;
   originalPrice?: number;
   stock: number;
   inStock: boolean;
   isActive?: boolean;
   badge?: string | null;
+  size?: string | null;
+  purpose?: string | null;
+  tags?: string[];
   images?: Array<{ url: string; alt?: string }>;
   category?: { _id: string; name: string; slug: string };
+}
+
+function escapeCsvCell(value: unknown): string {
+  const str = value == null ? "" : String(value);
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
+function downloadProductsCsv(products: Product[]) {
+  const headers = [
+    "ID",
+    "სახელი",
+    "ბრენდი",
+    "კატეგორია",
+    "ფასი",
+    "ძველი ფასი",
+    "ნაშთი",
+    "სტოკში",
+    "აქტიური",
+    "ბეიჯი",
+    "ზომა",
+    "დანიშნულება",
+    "ტეგები",
+    "სურათი",
+    "აღწერა",
+  ];
+
+  const rows = products.map((p) =>
+    [
+      p._id,
+      p.name,
+      p.brand,
+      p.category?.name ?? "",
+      p.price,
+      p.originalPrice ?? "",
+      p.stock,
+      p.inStock ? "კი" : "არა",
+      p.isActive === false ? "არა" : "კი",
+      p.badge ?? "",
+      p.size ?? "",
+      p.purpose ?? "",
+      (p.tags ?? []).join("; "),
+      p.images?.[0]?.url ?? "",
+      p.description ?? "",
+    ]
+      .map(escapeCsvCell)
+      .join(",")
+  );
+
+  const csv = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `products-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function AdminProductsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const canDelete = isFullAdmin(user);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -120,16 +182,36 @@ export default function AdminProductsPage() {
               Manage Products
             </h1>
             <p className="text-slate-400 mt-1">
-              Edit or delete products. Total: {products.length}
+              {canDelete ? "Edit or delete products." : "Add or edit products."} Total: {products.length}
             </p>
           </div>
-          <Link
-            href="/admin/products/add"
-            className="inline-flex items-center gap-2 px-4 py-3 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Add Product
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => downloadProductsCsv(products)}
+              disabled={loading || products.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-3 bg-slate-800 border border-slate-700 text-slate-200 font-medium rounded-lg hover:border-emerald-500/40 hover:text-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-4 h-4" />
+              ექსპორტი Excel-ში
+            </button>
+            {canDelete && (
+              <Link
+                href="/admin/products/trash"
+                className="inline-flex items-center gap-2 px-4 py-3 bg-slate-800 border border-slate-700 text-slate-200 font-medium rounded-lg hover:border-red-500/40 hover:text-red-300 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                სანაგვე
+              </Link>
+            )}
+            <Link
+              href="/admin/products/add"
+              className="inline-flex items-center gap-2 px-4 py-3 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all"
+            >
+              <Plus className="w-5 h-5" />
+              Add Product
+            </Link>
+          </div>
         </div>
 
         {/* Content */}
@@ -263,22 +345,24 @@ export default function AdminProductsPage() {
                             <Pencil className="w-4 h-4" />
                             Edit
                           </Link>
-                          <button
-                            onClick={() => handleDelete(product)}
-                            disabled={deletingId === product._id}
-                            className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              deleteConfirm === product._id
-                                ? "bg-red-600 hover:bg-red-700 text-white"
-                                : "bg-red-500/20 hover:bg-red-500/30 text-red-400"
-                            } disabled:opacity-50`}
-                          >
-                            {deletingId === product._id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                            {deleteConfirm === product._id ? "Confirm?" : "Delete"}
-                          </button>
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDelete(product)}
+                              disabled={deletingId === product._id}
+                              className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                deleteConfirm === product._id
+                                  ? "bg-red-600 hover:bg-red-700 text-white"
+                                  : "bg-red-500/20 hover:bg-red-500/30 text-red-400"
+                              } disabled:opacity-50`}
+                            >
+                              {deletingId === product._id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                              {deleteConfirm === product._id ? "Confirm?" : "Delete"}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
