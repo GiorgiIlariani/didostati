@@ -18,17 +18,52 @@ app.set("trust proxy", 1);
 // Connect to MongoDB
 connectDB();
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const allowed = (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((s) => s.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  if (allowed.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname === "didostati.store" || hostname === "www.didostati.store") {
+      return true;
+    }
+    // Vercel production + preview URLs for this project
+    if (
+      hostname.endsWith(".vercel.app") &&
+      (hostname.startsWith("didostati-frontend") ||
+        hostname.includes("giorgiilarianis-projects"))
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 // Middleware - CORS, parsing, logging, rate limiting
 const corsOrigin =
-  process.env.NODE_ENV === "production" && process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL
+  process.env.NODE_ENV === "production"
+    ? (origin, callback) => {
+        if (isAllowedOrigin(origin)) callback(null, true);
+        else callback(new Error("Not allowed by CORS"));
+      }
     : true;
 app.use(
   cors({
     origin: corsOrigin,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Visitor-Id"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "X-Visitor-Id",
+      "x-visitor-id",
+    ],
   }),
 );
 app.use(express.json());
