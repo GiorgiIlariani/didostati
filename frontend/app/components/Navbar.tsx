@@ -19,6 +19,7 @@ import ShoppingCartIcon from "./ShoppingCartIcon";
 // import NotificationDropdown from "./NotificationDropdown";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useWishlist } from "@/lib/context/WishlistContext";
+import { isPlaceholderName } from "@/lib/userName";
 import {
   Home,
   Package,
@@ -161,9 +162,21 @@ const Navbar = () => {
                   <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden">
                     <div className="p-3 border-b border-slate-700">
                       <p className="text-sm font-semibold text-slate-100">
-                        {user.name || user.email}
+                        {isPlaceholderName(user.name)
+                          ? user.email || user.phone
+                          : user.name}
                       </p>
-                      <p className="text-xs text-slate-400">{user.email}</p>
+                      <p className="text-xs text-slate-400">
+                        {isPlaceholderName(user.name) ? (
+                          <Link
+                            href="/account"
+                            className="text-orange-400 hover:text-orange-300">
+                            სახელის დამატება
+                          </Link>
+                        ) : (
+                          user.email || user.phone
+                        )}
+                      </p>
                     </div>
                     <div className="py-1">
                       <Link

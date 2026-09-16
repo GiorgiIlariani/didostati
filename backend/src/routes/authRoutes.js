@@ -13,5 +13,6 @@ router.post('/google', authLimiter, authController.loginWithGoogle);
 
 // Protected – requires valid JWT
 router.get('/me', authMiddleware.protect, authController.getMe);
+router.patch('/me', authMiddleware.protect, authController.updateMe);
 
 module.exports = router;

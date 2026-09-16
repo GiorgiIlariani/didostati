@@ -11,6 +11,7 @@ import TurnstileWidget, {
   type TurnstileHandle,
 } from "@/app/components/TurnstileWidget";
 import { safeRedirect } from "@/lib/safeRedirect";
+import { isPlaceholderName, validateFullName } from "@/lib/userName";
 import {
   ArrowLeft,
   Mail,
@@ -18,15 +19,20 @@ import {
   LogIn,
   Smartphone,
   Loader2,
+  UserRound,
+  Check,
 } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = safeRedirect(searchParams.get("redirect"));
-  const { login, loginWithPhone, loginWithGoogle } = useAuth();
+  const { login, loginWithPhone, loginWithGoogle, updateProfile } = useAuth();
 
   const [mode, setMode] = useState<"phone" | "email">("phone");
+  // First phone login: the account exists now but has no real name yet.
+  const [needsName, setNeedsName] = useState(false);
+  const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
@@ -70,10 +76,34 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      await loginWithPhone(phone, code);
+      const loggedIn = await loginWithPhone(phone, code);
+      if (isPlaceholderName(loggedIn.name)) {
+        // New (or never-named) phone user — ask who they are before moving on.
+        setNeedsName(true);
+        return;
+      }
       goAfterAuth();
     } catch (err: any) {
       setError(err.message || "შესვლა ვერ მოხერხდა");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    const validationError = validateFullName(fullName);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setLoading(true);
+    try {
+      await updateProfile({ name: fullName.trim().replace(/\s+/g, " ") });
+      goAfterAuth();
+    } catch (err: any) {
+      setError(err.message || "სახელის შენახვა ვერ მოხერხდა");
     } finally {
       setLoading(false);
     }
@@ -122,13 +152,15 @@ function LoginForm() {
         <div className="bg-slate-800 rounded-2xl border border-slate-700 p-8 shadow-xl">
           <h1 className="text-2xl font-bold mb-2">
             <span className="bg-linear-to-r from-orange-500 to-yellow-500 bg-clip-text text-transparent">
-              შესვლა
+              {needsName ? "მოგესალმებით!" : "შესვლა"}
             </span>
           </h1>
           <p className="text-slate-400 text-sm mb-6">
-            {redirect.includes("checkout")
-              ? "შეკვეთისთვის საჭიროა ავტორიზაცია"
-              : "შედით ნომრით ან Google-ით"}
+            {needsName
+              ? "ნომერი დადასტურდა. როგორ მოგმართოთ?"
+              : redirect.includes("checkout")
+                ? "შეკვეთისთვის საჭიროა ავტორიზაცია"
+                : "შედით ნომრით ან Google-ით"}
           </p>
 
           {error && (
@@ -137,7 +169,48 @@ function LoginForm() {
             </div>
           )}
 
-          {mode === "phone" && (
+          {needsName && (
+            <form onSubmit={handleSaveName} className="space-y-4">
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-2">
+                  სახელი და გვარი
+                </label>
+                <div className="relative">
+                  <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    autoFocus
+                    autoComplete="name"
+                    maxLength={100}
+                    placeholder="მაგ. გიორგი ილარიანი"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-orange-500 outline-none"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  გამოჩნდება შეკვეთებზე და პროფილში. მოგვიანებით შეცვლა
+                  შეგიძლიათ პროფილიდან.
+                </p>
+              </div>
+              <button
+                type="submit"
+                disabled={loading || fullName.trim().length < 2}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 disabled:opacity-50 min-h-[52px]">
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    გაგრძელება
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {!needsName && mode === "phone" && (
             <form
               onSubmit={codeSent ? handlePhoneLogin : handleSendCode}
               className="space-y-4">
@@ -227,7 +300,7 @@ function LoginForm() {
             </form>
           )}
 
-          {mode === "email" && (
+          {!needsName && mode === "email" && (
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-2">
@@ -275,38 +348,42 @@ function LoginForm() {
             </form>
           )}
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-700" />
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-slate-800 text-slate-500">ან</span>
-            </div>
-          </div>
+          {!needsName && (
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-slate-800 text-slate-500">ან</span>
+                </div>
+              </div>
 
-          <GoogleSignInButton
-            onCredential={onGoogle}
-            onError={(msg) => setError(msg)}
-          />
-          {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
-            <p className="text-xs text-slate-500 text-center mt-2">
-              Google შესვლა ჩაირთვება NEXT_PUBLIC_GOOGLE_CLIENT_ID-ის შემდეგ
-            </p>
+              <GoogleSignInButton
+                onCredential={onGoogle}
+                onError={(msg) => setError(msg)}
+              />
+              {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                <p className="text-xs text-slate-500 text-center mt-2">
+                  Google შესვლა ჩაირთვება NEXT_PUBLIC_GOOGLE_CLIENT_ID-ის შემდეგ
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setMode(mode === "phone" ? "email" : "phone")}
+                className="mt-6 w-full text-sm text-slate-400 hover:text-orange-400 transition-colors">
+                {mode === "phone"
+                  ? "ელფოსტით შესვლა"
+                  : "ნომრით შესვლა (რეკომენდებული)"}
+              </button>
+
+              <p className="mt-4 text-center text-sm text-slate-500">
+                ანგარიში არ გაქვთ? ნომრით პირველი შესვლა ავტომატურად
+                დაგირეგისტრირებთ.
+              </p>
+            </>
           )}
-
-          <button
-            type="button"
-            onClick={() => setMode(mode === "phone" ? "email" : "phone")}
-            className="mt-6 w-full text-sm text-slate-400 hover:text-orange-400 transition-colors">
-            {mode === "phone"
-              ? "ელფოსტით შესვლა"
-              : "ნომრით შესვლა (რეკომენდებული)"}
-          </button>
-
-          <p className="mt-4 text-center text-sm text-slate-500">
-            ანგარიში არ გაქვთ? ნომრით პირველი შესვლა ავტომატურად
-            დაგირეგისტრირებთ.
-          </p>
         </div>
       </div>
     </div>

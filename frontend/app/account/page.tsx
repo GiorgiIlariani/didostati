@@ -1,8 +1,109 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { Heart, Package, User } from "lucide-react";
+import { isPlaceholderName, realNameOrEmpty, validateFullName } from "@/lib/userName";
+import { Heart, Package, User, Pencil, Check, X, Loader2 } from "lucide-react";
+
+function ProfileName({ name }: { name: string }) {
+  const { updateProfile } = useAuth();
+  const placeholder = isPlaceholderName(name);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(realNameOrEmpty(name));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const startEdit = () => {
+    setValue(realNameOrEmpty(name));
+    setError("");
+    setEditing(true);
+  };
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationError = validateFullName(value);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await updateProfile({ name: value.trim().replace(/\s+/g, " ") });
+      setEditing(false);
+    } catch (err: any) {
+      setError(err.message || "შენახვა ვერ მოხერხდა");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <form onSubmit={save} className="mb-2">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            autoFocus
+            maxLength={100}
+            autoComplete="name"
+            placeholder="სახელი და გვარი"
+            className="flex-1 min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-orange-500 outline-none text-base"
+          />
+          <button
+            type="submit"
+            disabled={saving}
+            aria-label="შენახვა"
+            className="p-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50">
+            {saving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            disabled={saving}
+            aria-label="გაუქმება"
+            className="p-2 rounded-lg border border-slate-600 text-slate-300 hover:border-slate-400">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      </form>
+    );
+  }
+
+  return (
+    <div className="mb-1">
+      <div className="flex items-center gap-2 flex-wrap">
+        <h2 className="text-xl font-semibold">
+          {placeholder ? (
+            <span className="text-slate-400">სახელი არ არის მითითებული</span>
+          ) : (
+            name
+          )}
+        </h2>
+        <button
+          type="button"
+          onClick={startEdit}
+          className="inline-flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300">
+          <Pencil className="w-3.5 h-3.5" />
+          {placeholder ? "დამატება" : "შეცვლა"}
+        </button>
+      </div>
+      {placeholder && (
+        <p className="text-xs text-amber-400/90 mt-1">
+          დაამატეთ სახელი და გვარი — გამოჩნდება შეკვეთებზე.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function AccountPage() {
   const { user, loading } = useAuth();
@@ -55,12 +156,10 @@ export default function AccountPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500/10 border border-orange-500/40">
               <User className="w-6 h-6 text-orange-400" />
             </div>
-            <div>
-              <h2 className="text-xl font-semibold mb-1">
-                {user.name}
-              </h2>
+            <div className="flex-1 min-w-0">
+              <ProfileName name={user.name} />
               <p className="text-slate-400 text-sm mb-1">
-                {user.email}
+                {user.email || user.phone}
               </p>
               {user.role && (
                 <p className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-900/70 border border-slate-600 text-xs text-slate-300 mt-2">

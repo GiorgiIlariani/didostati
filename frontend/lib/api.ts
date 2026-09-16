@@ -476,6 +476,12 @@ export const authAPI = {
   getMe: async () => {
     return apiRequest('/auth/me');
   },
+  updateMe: async (data: { name: string }) => {
+    return apiRequest('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // Health check

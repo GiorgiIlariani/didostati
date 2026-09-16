@@ -13,6 +13,7 @@ import TurnstileWidget, {
   captchaEnabled,
   type TurnstileHandle,
 } from "@/app/components/TurnstileWidget";
+import { realNameOrEmpty } from "@/lib/userName";
 import {
   saveCheckoutDraft,
   saveCheckoutSuccess,
@@ -60,7 +61,7 @@ export default function CheckoutPage() {
     if (authLoading || !user) return;
     setFormData((prev) => ({
       ...prev,
-      name: prev.name || user.name || "",
+      name: prev.name || realNameOrEmpty(user.name),
       email: prev.email || user.email || "",
       phone: prev.phone || user.phone || "",
     }));

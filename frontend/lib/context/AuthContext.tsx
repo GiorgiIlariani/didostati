@@ -18,9 +18,12 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithPhone: (phone: string, code: string, name?: string) => Promise<void>;
+  /** Resolves with the logged-in user (new phone users get a placeholder name). */
+  loginWithPhone: (phone: string, code: string, name?: string) => Promise<User>;
   loginWithGoogle: (credential: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  /** Update own profile (name). Resolves with the refreshed user. */
+  updateProfile: (data: { name: string }) => Promise<User>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -40,12 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const applyAuth = (res: any) => {
+  const applyAuth = (res: any): User => {
     if (res.status === 'success' && res.data?.token) {
       setStoredToken(res.data.token);
       setTokenState(res.data.token);
       setUser(res.data.user);
-      return;
+      return res.data.user as User;
     }
     throw new Error(res.message || 'Auth failed');
   };
@@ -86,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithPhone = async (phone: string, code: string, name?: string) => {
-    applyAuth(await authAPI.loginWithPhone(phone, code, name));
+    return applyAuth(await authAPI.loginWithPhone(phone, code, name));
   };
 
   const loginWithGoogle = async (credential: string) => {
@@ -95,6 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     applyAuth(await authAPI.register(name, email, password));
+  };
+
+  const updateProfile = async (data: { name: string }): Promise<User> => {
+    const res = await authAPI.updateMe(data);
+    if (res.status !== 'success' || !res.data?.user) {
+      throw new Error(res.message || 'პროფილის განახლება ვერ მოხერხდა');
+    }
+    setUser(res.data.user);
+    return res.data.user as User;
   };
 
   const logout = () => {
@@ -111,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithPhone,
     loginWithGoogle,
     register,
+    updateProfile,
     logout,
     isAuthenticated: !!user,
   };

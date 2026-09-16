@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { createOrderNotification, createPaymentNotification } = require('../services/notificationService');
 const { ensureHttpsImageUrls } = require('../utils/imageUrl');
 const { escapeRegex } = require('../utils/escapeRegex');
@@ -520,6 +521,20 @@ exports.createOrder = async (req, res) => {
       // document itself failed to save.
       await releaseReserved();
       throw createError;
+    }
+
+    // Phone-registered users start with a placeholder name ("მომხმარებელი 5027").
+    // The name they type on the order form is the first real one we get —
+    // adopt it for the profile so it stops showing the placeholder.
+    const PLACEHOLDER_NAME = /^მომხმარებელი \d{4}$/;
+    if (
+      PLACEHOLDER_NAME.test(req.user.name || '') &&
+      customerInfo.name &&
+      !PLACEHOLDER_NAME.test(customerInfo.name)
+    ) {
+      User.updateOne({ _id: req.user._id }, { name: customerInfo.name.slice(0, 100) }).catch(
+        (e) => console.error('createOrder: adopt name failed:', e.message)
+      );
     }
 
     // Populate order for response

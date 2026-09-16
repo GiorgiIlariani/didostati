@@ -328,3 +328,45 @@ exports.getMe = async (req, res) => {
     });
   }
 };
+
+// @desc    Update own profile (currently: name)
+// @route   PATCH /api/auth/me
+exports.updateMe = async (req, res) => {
+  try {
+    const rawName = typeof req.body.name === 'string' ? req.body.name.trim().replace(/\s+/g, ' ') : '';
+    if (rawName.length < 2 || rawName.length > 100) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'სახელი უნდა იყოს 2-დან 100 სიმბოლომდე',
+      });
+    }
+    // Letters (any script), spaces, hyphens and apostrophes only.
+    if (!/^[\p{L}\p{M}][\p{L}\p{M}\s'’-]*$/u.test(rawName)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'სახელი შეიძლება შეიცავდეს მხოლოდ ასოებს',
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name: rawName },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'მომხმარებელი ვერ მოიძებნა' });
+    }
+
+    res.json({
+      status: 'success',
+      data: { user: userPayload(user) }
+    });
+  } catch (err) {
+    console.error('updateMe:', err);
+    res.status(500).json({
+      status: 'error',
+      message: err.message || 'პროფილის განახლება ვერ მოხერხდა'
+    });
+  }
+};
