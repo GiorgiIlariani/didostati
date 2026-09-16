@@ -210,13 +210,6 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center gap-1.5">
-          {!loading && !user && (
-            <Link
-              href="/login"
-              className="ds-btn-primary px-3 py-2 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-bold rounded-lg text-xs min-h-[44px] inline-flex items-center">
-              შესვლა
-            </Link>
-          )}
           <button
             type="button"
             onClick={() => setShowMobileSearch(!showMobileSearch)}
