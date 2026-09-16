@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, Suspense, useCallback } from "react";
+import { useState, Suspense, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { otpAPI } from "@/lib/api";
 import GoogleSignInButton from "@/app/components/GoogleSignInButton";
+import TurnstileWidget, {
+  captchaEnabled,
+  type TurnstileHandle,
+} from "@/app/components/TurnstileWidget";
 import { safeRedirect } from "@/lib/safeRedirect";
 import {
   ArrowLeft,
@@ -31,6 +35,8 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<TurnstileHandle>(null);
 
   const goAfterAuth = useCallback(() => {
     router.push(redirect);
@@ -40,15 +46,21 @@ function LoginForm() {
   const handleSendCode = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError("");
+    if (captchaEnabled && !captchaToken) {
+      setError("უსაფრთხოების შემოწმება მიმდინარეობს — სცადეთ წამში");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await otpAPI.send(phone, "login");
+      const res = await otpAPI.send(phone, "login", captchaToken);
       setCodeSent(true);
       if (res.data?.devCode) setDevCode(res.data.devCode);
       else setDevCode(null);
     } catch (err: any) {
       setError(err.message || "კოდის გაგზავნა ვერ მოხერხდა");
     } finally {
+      // Turnstile tokens are single-use — get a fresh one for the next try.
+      captchaRef.current?.reset();
       setLoading(false);
     }
   };
@@ -173,9 +185,17 @@ function LoginForm() {
                 </div>
               )}
 
+              {!codeSent && (
+                <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
+              )}
+
               <button
                 type="submit"
-                disabled={loading || (codeSent && code.length !== 6)}
+                disabled={
+                  loading ||
+                  (codeSent && code.length !== 6) ||
+                  (!codeSent && captchaEnabled && !captchaToken)
+                }
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 disabled:opacity-50 min-h-[52px]">
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

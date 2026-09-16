@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { otpAPI, orderAPI } from "@/lib/api";
+import TurnstileWidget, {
+  captchaEnabled,
+  type TurnstileHandle,
+} from "@/app/components/TurnstileWidget";
 import { useCart } from "@/lib/context/CartContext";
 import { useAuth } from "@/lib/context/AuthContext";
 import {
@@ -31,6 +35,8 @@ export default function CheckoutVerifyPage() {
   // failed order create (e.g. out of stock) must reuse this token instead of
   // forcing the user to request a brand-new SMS.
   const otpTokenRef = useRef<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -89,8 +95,17 @@ export default function CheckoutVerifyPage() {
   const handleResend = async () => {
     if (resendLeft > 0 || !phone) return;
     setError("");
+    if (captchaEnabled && !captchaToken) {
+      setError("უსაფრთხოების შემოწმება მიმდინარეობს — სცადეთ წამში");
+      return;
+    }
     try {
-      const res = await otpAPI.send(phone, "order");
+      let res;
+      try {
+        res = await otpAPI.send(phone, "order", captchaToken);
+      } finally {
+        captchaRef.current?.reset();
+      }
       if (res.status !== "success") {
         setError(res.message || "ხელახლა გაგზავნა ვერ მოხერხდა");
         return;
@@ -229,6 +244,12 @@ export default function CheckoutVerifyPage() {
               )}
             </button>
           </form>
+
+          {captchaEnabled && (
+            <div className="mt-4">
+              <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
+            </div>
+          )}
 
           <p className="mt-4 text-sm text-slate-400">
             {resendLeft > 0 ? (

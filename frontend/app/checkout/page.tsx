@@ -3,12 +3,16 @@
 /**
  * Checkout form — saves draft + sends OTP, then redirects to /checkout/verify.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useCart } from "@/lib/context/CartContext";
 import { otpAPI, orderAPI } from "@/lib/api";
+import TurnstileWidget, {
+  captchaEnabled,
+  type TurnstileHandle,
+} from "@/app/components/TurnstileWidget";
 import {
   saveCheckoutDraft,
   saveCheckoutSuccess,
@@ -42,6 +46,8 @@ export default function CheckoutPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<TurnstileHandle>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -188,7 +194,18 @@ export default function CheckoutPage() {
         return;
       }
 
-      const res = await otpAPI.send(draft.phone, "order");
+      if (captchaEnabled && !captchaToken) {
+        setError("უსაფრთხოების შემოწმება მიმდინარეობს — სცადეთ წამში");
+        return;
+      }
+
+      let res;
+      try {
+        res = await otpAPI.send(draft.phone, "order", captchaToken);
+      } finally {
+        // Turnstile tokens are single-use — refresh for a possible retry.
+        captchaRef.current?.reset();
+      }
       if (res.status !== "success") {
         setError(res.message || "OTP გაგზავნა ვერ მოხერხდა");
         return;
@@ -389,6 +406,9 @@ export default function CheckoutPage() {
                 whatsappMessage="გამარჯობა, შეკვეთის გაფორმებაში მჭირდება დახმარება — Didostati."
               />
             </div>
+
+            {/* Invisible bot check for the OTP SMS (only when configured) */}
+            <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
 
             <div className="flex justify-end">
               <button

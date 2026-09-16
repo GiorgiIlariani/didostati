@@ -7,6 +7,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/database");
 const { apiLimiter } = require("./middleware/rateLimit");
 const { validateSmsConfig } = require("./services/smsService");
+const { validateCaptchaConfig } = require("./middleware/captcha");
 
 // Load environment variables
 dotenv.config();
@@ -14,6 +15,8 @@ dotenv.config();
 // Fail fast in production if SMS is misconfigured (OTP login/checkout
 // depends on it). Logs a warning in development.
 validateSmsConfig();
+// Warn (never fail) when OTP sends are not CAPTCHA-protected.
+validateCaptchaConfig();
 
 // Initialize Express app
 const app = express();

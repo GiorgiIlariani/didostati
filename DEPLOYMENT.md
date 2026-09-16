@@ -55,6 +55,7 @@ You will use this as `MONGODB_URI` for the backend.
    | `FRONTEND_URL`| Your frontend URL **after** you deploy it (e.g. `https://your-app.vercel.app`) |
    | `JWT_SECRET`  | A long random string (e.g. generate one at [randomkeygen.com](https://randomkeygen.com)) |
    | `JWT_EXPIRE`  | `7d` |
+   | `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile **Secret Key** (bot protection for OTP SMS). Free: [dash.cloudflare.com](https://dash.cloudflare.com) → Turnstile → Add widget → domain `didostati.store`, mode **Managed**. Pair with `NEXT_PUBLIC_TURNSTILE_SITE_KEY` on the frontend. |
 
 7. Deploy. When it’s done, Render gives you a URL like:  
    `https://didostati-backend.onrender.com`  
@@ -82,6 +83,7 @@ You will use this as `MONGODB_URI` for the backend.
    | `NEXT_PUBLIC_DELIVERY_BASE_LAT`  | (same as in your `.env.local`, e.g. `41.9842`) |
    | `NEXT_PUBLIC_DELIVERY_BASE_LNG`  | (e.g. `44.1158`) |
    | `NEXT_PUBLIC_DELIVERY_BASE_LABEL`| (e.g. `გორი`) |
+   | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile **Site Key** (same widget as the backend's `TURNSTILE_SECRET_KEY`). Leave unset to disable the bot check. |
 
 5. Deploy. Vercel will give you a URL like:  
    `https://didostati.vercel.app`

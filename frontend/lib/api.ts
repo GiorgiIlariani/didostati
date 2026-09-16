@@ -264,10 +264,20 @@ export const orderAPI = {
 };
 
 export const otpAPI = {
-  send: async (phone: string, purpose: 'order' | 'login' = 'order') => {
+  // captchaToken: Cloudflare Turnstile token (required by the backend only
+  // when TURNSTILE_SECRET_KEY is configured there).
+  send: async (
+    phone: string,
+    purpose: 'order' | 'login' = 'order',
+    captchaToken?: string | null,
+  ) => {
     return apiRequest('/otp/send', {
       method: 'POST',
-      body: JSON.stringify({ phone, purpose }),
+      body: JSON.stringify({
+        phone,
+        purpose,
+        ...(captchaToken ? { captchaToken } : {}),
+      }),
     });
   },
   verify: async (phone: string, code: string, purpose: 'order' | 'login' = 'order') => {
