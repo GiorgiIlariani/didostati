@@ -24,6 +24,7 @@ import {
   getLocationNameFromCoords,
   getDeliveryFeeForCity,
   EXPRESS_FEE_EXTRA,
+  GPS_PRICING_ENABLED,
 } from "../utils/delivery";
 
 interface CartContextType {
@@ -139,9 +140,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }, 50);
   }, []);
 
-  // Request location when cart has items (skip for pickup)
+  // Request location when cart has items (skip for pickup). Only when GPS
+  // pricing is enabled — otherwise never prompt for location.
   useEffect(() => {
     if (
+      GPS_PRICING_ENABLED &&
       items.length > 0 &&
       locationStatus === "idle" &&
       deliveryType !== "pickup"
@@ -207,9 +210,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       deliveryFeeResolved = true;
     } else {
       const cityFee = deliveryCity ? getDeliveryFeeForCity(deliveryCity) : null;
-      const coordsFee = userCoords
-        ? getDeliveryFromCoords(userCoords.lat, userCoords.lng)
-        : null;
+      const coordsFee =
+        GPS_PRICING_ENABLED && userCoords
+          ? getDeliveryFromCoords(userCoords.lat, userCoords.lng)
+          : null;
       if (cityFee != null) {
         baseFee = cityFee;
         deliveryLocationName = deliveryCity;

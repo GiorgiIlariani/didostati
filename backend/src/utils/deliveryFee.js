@@ -60,6 +60,14 @@ const DELIVERY_BASE = {
 // would only be sent by a tampered client trying to hit the min fee.
 const GEORGIA_BOUNDS = { minLat: 41.0, maxLat: 43.6, minLng: 39.9, maxLng: 46.8 };
 
+// GPS (per-km) pricing is OFF by default — it undercut the city tariff table
+// (Batumi ₾400 by tariff vs ₾25 by GPS). Orders must price from a tariff
+// city (or pickup). Set DELIVERY_GPS_PRICING=true here and
+// NEXT_PUBLIC_GPS_DELIVERY_PRICING=true on the frontend to re-enable.
+function isGpsPricingEnabled() {
+  return process.env.DELIVERY_GPS_PRICING === "true";
+}
+
 function normalizeCity(name) {
   return String(name || "")
     .trim()
@@ -123,6 +131,8 @@ function getDeliveryFee(deliveryType, pricing = {}) {
 
   const knownFee = getKnownCityFee(pricing.city);
   if (knownFee !== null) return knownFee + expressExtra;
+
+  if (!isGpsPricingEnabled()) return null;
 
   const coords = parseCoords(pricing.coords);
   if (coords) {

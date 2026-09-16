@@ -406,7 +406,7 @@ exports.createOrder = async (req, res) => {
     if (deliveryFee === null) {
       return res.status(400).json({
         status: 'error',
-        message: 'მიწოდების ფასი ვერ დადგინდა — აირჩიეთ ქალაქი სიიდან ან ჩართეთ ლოკაცია',
+        message: 'მიწოდების ფასი ვერ დადგინდა — აირჩიეთ ქალაქი სიიდან',
       });
     }
 

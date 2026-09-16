@@ -18,6 +18,15 @@ export const DELIVERY_BASE = { lat: DELIVERY_BASE_LAT, lng: DELIVERY_BASE_LNG };
 /** Label shown in UI for "from" */
 export const DELIVERY_BASE_LABEL = process.env.NEXT_PUBLIC_DELIVERY_BASE_LABEL || "გორი";
 
+/**
+ * GPS-based (per-km) delivery pricing is OFF by default: it priced far cities
+ * far below the tariff table (Batumi ₾400 by tariff vs ₾25 by GPS). Customers
+ * pick a city from the list instead. Set NEXT_PUBLIC_GPS_DELIVERY_PRICING=true
+ * on the frontend AND DELIVERY_GPS_PRICING=true on the backend to re-enable.
+ */
+export const GPS_PRICING_ENABLED =
+  process.env.NEXT_PUBLIC_GPS_DELIVERY_PRICING === "true";
+
 export const GEL_PER_KM = 0.2;
 export const MIN_DELIVERY_FEE = 2;
 export const MAX_DELIVERY_FEE = 25;

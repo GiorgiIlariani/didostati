@@ -6,7 +6,7 @@
  */
 import { useCart } from "@/lib/context/CartContext";
 import { useAuth } from "@/lib/context/AuthContext";
-import { DELIVERY_BASE_LABEL } from "@/lib/utils/delivery";
+import { DELIVERY_BASE_LABEL, GPS_PRICING_ENABLED } from "@/lib/utils/delivery";
 import DeliveryCitySelect from "@/app/components/DeliveryCitySelect";
 import ContactQuickActions from "@/app/components/ContactQuickActions";
 import Link from "next/link";
@@ -258,19 +258,21 @@ export default function CheckoutDeliveryPage() {
                     value={deliveryCity}
                     onChange={setDeliveryCity}
                   />
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-2.5 leading-relaxed">
-                    {locationStatus === "loading" ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                        <span>ან ველოდებით მდებარეობის დადგენას...</span>
-                      </>
-                    ) : (
-                      <>
-                        <LocateFixed className="w-3.5 h-3.5 shrink-0" />
-                        <span>ან მდებარეობა ავტომატურად (ბრაუზერის ნებართვით).</span>
-                      </>
-                    )}
-                  </div>
+                  {GPS_PRICING_ENABLED && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-2.5 leading-relaxed">
+                      {locationStatus === "loading" ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                          <span>ან ველოდებით მდებარეობის დადგენას...</span>
+                        </>
+                      ) : (
+                        <>
+                          <LocateFixed className="w-3.5 h-3.5 shrink-0" />
+                          <span>ან მდებარეობა ავტომატურად (ბრაუზერის ნებართვით).</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -303,7 +305,8 @@ export default function CheckoutDeliveryPage() {
               <div className="flex justify-between text-slate-300 pt-2 border-t border-slate-700/60">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
                   <span className="text-sm">მიწოდება</span>
-                  {deliveryType !== "pickup" &&
+                  {GPS_PRICING_ENABLED &&
+                    deliveryType !== "pickup" &&
                     (locationStatus === "denied" ||
                       locationStatus === "error") &&
                     !deliveryCity && (
@@ -347,7 +350,9 @@ export default function CheckoutDeliveryPage() {
                   <MapPin className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-slate-300 leading-relaxed">
-                      აირჩიეთ ქალაქი ზემოთ ან მიუთითეთ მდებარეობა.
+                      {GPS_PRICING_ENABLED
+                        ? "აირჩიეთ ქალაქი ზემოთ ან მიუთითეთ მდებარეობა."
+                        : "აირჩიეთ ქალაქი ზემოთ — ტარიფი ავტომატურად დაითვლება."}
                     </p>
                     {permissionDeniedHelp && (
                       <p className="text-xs text-orange-400/90 mt-2">
