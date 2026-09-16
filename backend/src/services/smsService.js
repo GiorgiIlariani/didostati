@@ -272,4 +272,8 @@ async function sendSms(phone, message) {
   return { provider: 'mock' };
 }
 
-module.exports = { sendSms, validateSmsConfig, SUPPORTED_PROVIDERS };
+function isMockSmsProvider() {
+  return getProvider() === 'mock';
+}
+
+module.exports = { sendSms, validateSmsConfig, isMockSmsProvider, SUPPORTED_PROVIDERS };

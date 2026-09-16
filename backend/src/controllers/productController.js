@@ -62,6 +62,39 @@ async function recordUniqueProductView(req, product) {
   }
 }
 
+// Public list endpoints: only these sort keys are accepted (anything else
+// falls back to newest first), and page sizes are capped.
+const ALLOWED_SORTS = new Set([
+  "createdAt",
+  "-createdAt",
+  "price",
+  "-price",
+  "rating",
+  "-rating",
+  "name",
+  "-name",
+]);
+const MAX_PAGE_SIZE = 100;
+
+function parsePagination(query, defaultLimit) {
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const limit = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, parseInt(query.limit, 10) || defaultLimit),
+  );
+  return { page, limit };
+}
+
+function parseSort(raw) {
+  return ALLOWED_SORTS.has(raw) ? raw : "-createdAt";
+}
+
+function parsePrice(raw) {
+  if (raw === undefined || raw === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function pickProductFields(body) {
   if (!body || typeof body !== "object") return {};
   const picked = {};
@@ -77,8 +110,6 @@ function pickProductFields(body) {
 exports.getAllProducts = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 12,
       category: categoryParam,
       brand,
       minPrice,
@@ -86,15 +117,16 @@ exports.getAllProducts = async (req, res) => {
       inStock,
       size,
       purpose,
-      sort = "-createdAt",
       q: searchQuery,
     } = req.query;
+    const { page, limit } = parsePagination(req.query, 12);
+    const sort = parseSort(req.query.sort);
 
     // Build query
     const query = { isActive: true, ...NOT_DELETED };
 
     // Category: accept either ObjectId or slug
-    if (categoryParam && categoryParam.trim()) {
+    if (typeof categoryParam === "string" && categoryParam.trim()) {
       const isValidId =
         mongoose.Types.ObjectId.isValid(categoryParam) &&
         String(new mongoose.Types.ObjectId(categoryParam)) ===
@@ -115,21 +147,23 @@ exports.getAllProducts = async (req, res) => {
       query.$text = { $search: searchQuery.trim() };
     }
 
-    if (brand) query.brand = brand;
+    if (typeof brand === "string" && brand) query.brand = brand;
     if (inStock !== undefined) query.inStock = inStock === "true";
-    if (size) query.size = size;
-    if (purpose) query.purpose = purpose;
-    if (minPrice || maxPrice) {
+    if (typeof size === "string" && size) query.size = size;
+    if (typeof purpose === "string" && purpose) query.purpose = purpose;
+    const min = parsePrice(minPrice);
+    const max = parsePrice(maxPrice);
+    if (min !== null || max !== null) {
       query.price = {};
-      if (minPrice) query.price.$gte = Number(minPrice);
-      if (maxPrice) query.price.$lte = Number(maxPrice);
+      if (min !== null) query.price.$gte = min;
+      if (max !== null) query.price.$lte = max;
     }
 
     // Execute query with pagination
     const products = await Product.find(query)
       .populate("category", "name slug")
       .sort(sort)
-      .limit(limit * 1)
+      .limit(limit)
       .skip((page - 1) * limit)
       .exec();
 
@@ -217,7 +251,7 @@ exports.getFilterOptions = async (req, res) => {
 // Get featured/best selling products
 exports.getFeaturedProducts = async (req, res) => {
   try {
-    const { limit = 8 } = req.query;
+    const { limit } = parsePagination(req.query, 8);
 
     const products = await Product.find({
       isActive: true,
@@ -227,7 +261,7 @@ exports.getFeaturedProducts = async (req, res) => {
     })
       .populate("category", "name slug")
       .sort("-rating -reviewsCount")
-      .limit(Number(limit));
+      .limit(limit);
 
     // Calculate sold counts for today
     const todayStart = new Date();
@@ -274,7 +308,7 @@ exports.getFeaturedProducts = async (req, res) => {
 // Get promotions/sale products
 exports.getPromotions = async (req, res) => {
   try {
-    const { limit = 8 } = req.query;
+    const { limit } = parsePagination(req.query, 8);
 
     // Find products with badge: 'Sale' OR originalPrice > price
     const products = await Product.find({
@@ -290,7 +324,7 @@ exports.getPromotions = async (req, res) => {
     })
       .populate("category", "name slug")
       .sort("-createdAt")
-      .limit(Number(limit));
+      .limit(limit);
 
     // Calculate sold counts for today
     const todayStart = new Date();
@@ -337,9 +371,9 @@ exports.getPromotions = async (req, res) => {
 // Search products (smart search)
 exports.searchProducts = async (req, res) => {
   try {
-    const { q, limit = 20 } = req.query;
+    const { q } = req.query;
 
-    if (!q || !q.trim()) {
+    if (typeof q !== "string" || !q.trim()) {
       return res.status(400).json({
         status: "error",
         message: "Search query is required",
@@ -347,7 +381,7 @@ exports.searchProducts = async (req, res) => {
     }
 
     const cleanQuery = q.trim();
-    const maxResults = Number(limit) || 20;
+    const { limit: maxResults } = parsePagination(req.query, 20);
 
     // Primary: text search with relevance score
     let products = await Product.find(
@@ -468,10 +502,23 @@ exports.addProductReview = async (req, res) => {
       });
     }
 
-    if (!rating || !comment) {
+    const ratingNum = Number(rating);
+    if (
+      !Number.isInteger(ratingNum) ||
+      ratingNum < 1 ||
+      ratingNum > 5 ||
+      typeof comment !== "string" ||
+      !comment.trim()
+    ) {
       return res.status(400).json({
         status: "error",
-        message: "Rating and comment are required",
+        message: "შეფასება უნდა იყოს 1-დან 5-მდე და კომენტარი სავალდებულოა",
+      });
+    }
+    if (comment.length > 2000) {
+      return res.status(400).json({
+        status: "error",
+        message: "კომენტარი 2000 სიმბოლოზე მეტი ვერ იქნება",
       });
     }
 

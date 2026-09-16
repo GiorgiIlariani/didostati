@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { otpAPI } from "@/lib/api";
 import GoogleSignInButton from "@/app/components/GoogleSignInButton";
+import { safeRedirect } from "@/lib/safeRedirect";
 import {
   ArrowLeft,
   Mail,
@@ -18,7 +19,7 @@ import {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const redirect = safeRedirect(searchParams.get("redirect"));
   const { login, loginWithPhone, loginWithGoogle } = useAuth();
 
   const [mode, setMode] = useState<"phone" | "email">("phone");

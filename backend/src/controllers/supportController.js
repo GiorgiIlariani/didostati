@@ -49,11 +49,12 @@ exports.createSupportRequest = async (req, res) => {
 // Admin: Get all support requests
 exports.getAllSupportRequests = async (req, res) => {
   try {
-    const { status, limit = 50 } = req.query;
-    
+    const { status } = req.query;
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+
     const query = {};
-    if (status) {
-      query.status = status;
+    if (status && ['new', 'in_progress', 'resolved'].includes(String(status))) {
+      query.status = String(status);
     }
 
     const supportRequests = await SupportRequest.find(query)
@@ -61,7 +62,7 @@ exports.getAllSupportRequests = async (req, res) => {
       .populate('user', 'name email')
       .populate('respondedBy', 'name email')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(limit);
 
     res.json({
       status: 'success',

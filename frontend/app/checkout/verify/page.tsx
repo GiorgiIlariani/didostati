@@ -27,6 +27,10 @@ export default function CheckoutVerifyPage() {
   const [resendLeft, setResendLeft] = useState(RESEND_SECONDS);
   const [devCode, setDevCode] = useState<string | null>(null);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+  // Once the code is verified the server marks the OTP session as used, so a
+  // failed order create (e.g. out of stock) must reuse this token instead of
+  // forcing the user to request a brand-new SMS.
+  const otpTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -108,7 +112,7 @@ export default function CheckoutVerifyPage() {
       router.replace("/checkout");
       return;
     }
-    if (code.length !== CODE_LENGTH) {
+    if (!otpTokenRef.current && code.length !== CODE_LENGTH) {
       setError("შეიყვანეთ 6-ციფრიანი კოდი");
       return;
     }
@@ -117,15 +121,18 @@ export default function CheckoutVerifyPage() {
     setError("");
 
     try {
-      const verifyRes = await otpAPI.verify(draft.phone, code, "order");
-      if (verifyRes.status !== "success" || !verifyRes.data?.otpToken) {
-        setError(verifyRes.message || "არასწორი კოდი");
-        return;
+      if (!otpTokenRef.current) {
+        const verifyRes = await otpAPI.verify(draft.phone, code, "order");
+        if (verifyRes.status !== "success" || !verifyRes.data?.otpToken) {
+          setError(verifyRes.message || "არასწორი კოდი");
+          return;
+        }
+        otpTokenRef.current = verifyRes.data.otpToken;
       }
 
       const createRes = await orderAPI.create({
         ...draft,
-        otpToken: verifyRes.data.otpToken,
+        otpToken: otpTokenRef.current ?? undefined,
       });
 
       if (createRes.status !== "success" || !createRes.data?.order) {
@@ -143,7 +150,11 @@ export default function CheckoutVerifyPage() {
       });
       router.replace("/checkout/success");
     } catch (err: any) {
-      setError(err.message || "დადასტურება ვერ მოხერხდა");
+      const message: string = err?.message || "დადასტურება ვერ მოხერხდა";
+      // The server rejected the OTP token itself (expired/mismatch) — drop it
+      // so the next attempt verifies the code again.
+      if (message.includes("OTP")) otpTokenRef.current = null;
+      setError(message);
     } finally {
       setSubmitting(false);
     }

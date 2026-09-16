@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
+const helmet = require("helmet");
 const morgan = require("morgan");
 const dotenv = require("dotenv");
 const connectDB = require("./config/database");
@@ -19,6 +20,23 @@ const app = express();
 
 // Trust proxy (Render, Heroku, etc.) so req.protocol is correct for HTTPS URLs
 app.set("trust proxy", 1);
+
+// Parse query strings as flat key=value pairs only. The default "extended"
+// parser turns `?brand[$regex]=...` into `{ brand: { $regex: ... } }`, which
+// would let a client inject MongoDB operators into filters (e.g. ReDoS via
+// $regex). Our API only ever uses flat query params.
+app.set("query parser", "simple");
+
+// Security headers. This is a JSON API whose /uploads are embedded by the
+// frontend on another origin, so allow cross-origin resource loading and
+// skip CSP (not meaningful for API responses).
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 
 // Connect to MongoDB
 connectDB();

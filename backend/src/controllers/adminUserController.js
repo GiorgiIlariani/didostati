@@ -6,11 +6,13 @@ const ASSIGNABLE_ROLES = ['user', 'staff', 'admin'];
 // GET /api/admin/users — list users (admin only), for promoting/demoting staff
 exports.listUsers = async (req, res) => {
   try {
-    const { role, q, page = 1, limit = 50 } = req.query;
+    const { role, q } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
 
     const query = {};
     if (role && ASSIGNABLE_ROLES.includes(role)) query.role = role;
-    if (q && q.trim()) {
+    if (typeof q === 'string' && q.trim()) {
       const regex = new RegExp(q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
       query.$or = [{ name: regex }, { email: regex }, { phone: regex }];
     }

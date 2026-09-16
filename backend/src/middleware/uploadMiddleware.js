@@ -2,26 +2,46 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure upload directory exists
-const uploadDir = path.join(__dirname, '../../uploads/advertisements');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// The stored file extension is derived from the (already whitelisted)
+// MIME type, never from the client-supplied original filename — otherwise a
+// "image/png" upload named "x.html" would be served back as HTML from
+// /uploads.
+const IMAGE_EXTENSIONS = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+};
+const VIDEO_EXTENSIONS = {
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'video/quicktime': '.mov',
+};
+
+function safeFilename(mimetype, allowedExtensions) {
+  const ext = allowedExtensions[mimetype] || '.bin';
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
 }
+
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+// Advertisement media: images + videos; stored in uploads/advertisements
+const uploadDir = path.join(__dirname, '../../uploads/advertisements');
+ensureDir(uploadDir);
+
+const mediaExtensions = { ...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS };
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || (file.mimetype.startsWith('video/') ? '.mp4' : '.jpg');
-    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
-    cb(null, safeName);
-  }
+  filename: (req, file, cb) => cb(null, safeFilename(file.mimetype, mediaExtensions)),
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedImages = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const allowedVideos = ['video/mp4', 'video/webm', 'video/quicktime'];
-  const allowed = [...allowedImages, ...allowedVideos];
-  if (allowed.includes(file.mimetype)) {
+  if (Object.prototype.hasOwnProperty.call(mediaExtensions, file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file type. Use image (JPEG, PNG, GIF, WebP) or video (MP4, WebM).'), false);
@@ -36,22 +56,15 @@ const upload = multer({
 
 // Product images: JPEG, PNG, GIF, WebP only; stored in uploads/products
 const productUploadDir = path.join(__dirname, '../../uploads/products');
-if (!fs.existsSync(productUploadDir)) {
-  fs.mkdirSync(productUploadDir, { recursive: true });
-}
+ensureDir(productUploadDir);
 
 const productStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, productUploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}${ext}`;
-    cb(null, safeName);
-  }
+  filename: (req, file, cb) => cb(null, safeFilename(file.mimetype, IMAGE_EXTENSIONS)),
 });
 
 const imageOnlyFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  if (allowed.includes(file.mimetype)) {
+  if (Object.prototype.hasOwnProperty.call(IMAGE_EXTENSIONS, file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error('Invalid file type. Use JPEG, PNG, GIF or WebP.'), false);

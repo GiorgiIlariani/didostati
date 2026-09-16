@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const OtpSession = require('../models/OtpSession');
 const OtpDailyLimit = require('../models/OtpDailyLimit');
-const { sendSms } = require('../services/smsService');
+const { sendSms, isMockSmsProvider } = require('../services/smsService');
 const { getJwtSecret } = require('../config/jwtSecret');
 
 const OTP_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -151,7 +151,10 @@ exports.sendOtp = async (req, res) => {
       },
     };
 
-    if (process.env.NODE_ENV !== 'production') {
+    // Expose the code only in development AND only when no real SMS is being
+    // sent (mock provider). A production deploy that forgot NODE_ENV must
+    // never leak real OTP codes in the API response.
+    if (process.env.NODE_ENV !== 'production' && isMockSmsProvider()) {
       payload.data.devCode = code;
     }
 

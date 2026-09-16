@@ -4,12 +4,15 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
+import { safeRedirect } from "@/lib/safeRedirect";
 import { ArrowLeft, Mail, Lock, User, UserPlus } from "lucide-react";
+
+const PASSWORD_MIN_LENGTH = 8;
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const redirect = safeRedirect(searchParams.get("redirect"));
   const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -25,8 +28,8 @@ function RegisterForm() {
       setError("პაროლები არ ემთხვევა");
       return;
     }
-    if (password.length < 6) {
-      setError("პაროლი უნდა იყოს მინიმუმ 6 სიმბოლო");
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setError(`პაროლი უნდა იყოს მინიმუმ ${PASSWORD_MIN_LENGTH} სიმბოლო`);
       return;
     }
     setLoading(true);
@@ -104,7 +107,7 @@ function RegisterForm() {
 
             <div>
               <label className="block text-slate-300 text-sm font-medium mb-2">
-                პაროლი (მინ. 6 სიმბოლო)
+                პაროლი (მინ. {PASSWORD_MIN_LENGTH} სიმბოლო)
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
@@ -114,7 +117,7 @@ function RegisterForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="new-password"
-                  minLength={6}
+                  minLength={PASSWORD_MIN_LENGTH}
                   className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   placeholder="••••••••"
                 />
@@ -133,7 +136,7 @@ function RegisterForm() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   autoComplete="new-password"
-                  minLength={6}
+                  minLength={PASSWORD_MIN_LENGTH}
                   className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                   placeholder="••••••••"
                 />

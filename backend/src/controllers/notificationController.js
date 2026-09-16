@@ -10,7 +10,8 @@ exports.getUserNotifications = async (req, res) => {
       });
     }
 
-    const { read, limit = 50 } = req.query;
+    const { read } = req.query;
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const query = { user: req.user._id };
     
     if (read !== undefined) {
@@ -19,7 +20,7 @@ exports.getUserNotifications = async (req, res) => {
 
     const notifications = await Notification.find(query)
       .sort('-createdAt')
-      .limit(Number(limit))
+      .limit(limit)
       .exec();
 
     // Get unread count

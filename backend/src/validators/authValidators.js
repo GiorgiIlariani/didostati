@@ -12,7 +12,7 @@ exports.registerValidator = [
     .normalizeEmail(),
   body('password')
     .notEmpty().withMessage('Password is required')
-    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    .isLength({ min: 8, max: 128 }).withMessage('პაროლი უნდა იყოს მინიმუმ 8 სიმბოლო')
 ];
 
 exports.loginValidator = [

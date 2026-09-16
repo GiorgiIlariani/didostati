@@ -46,10 +46,24 @@ const orderLookupLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// Public support/consultation form — no auth required, so cap submissions
+// per IP to keep spam out of the admin inbox.
+const supportFormLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: {
+    status: 'error',
+    message: 'ძალიან ბევრი მოთხოვნა. სცადეთ მოგვიანებით.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 module.exports = {
   authLimiter,
   otpLimiter,
   apiLimiter,
-  orderLookupLimiter
+  orderLookupLimiter,
+  supportFormLimiter
 };
 

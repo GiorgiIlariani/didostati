@@ -1,6 +1,10 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 
+// Storefront product filters must match productController: active and not
+// soft-deleted (trashed products would otherwise still be counted/listed).
+const VISIBLE_PRODUCT = { isActive: true, isDeleted: { $ne: true } };
+
 // Get all categories (flat list with parent populated for multi-level display)
 exports.getAllCategories = async (req, res) => {
   try {
@@ -13,7 +17,7 @@ exports.getAllCategories = async (req, res) => {
       categories.map(async (category) => {
         const productCount = await Product.countDocuments({
           category: category._id,
-          isActive: true
+          ...VISIBLE_PRODUCT,
         });
         const obj = category.toObject();
         return {
@@ -53,7 +57,7 @@ exports.getCategoryById = async (req, res) => {
     // Get product count
     const productCount = await Product.countDocuments({
       category: category._id,
-      isActive: true
+      ...VISIBLE_PRODUCT,
     });
 
     res.json({
@@ -88,7 +92,7 @@ exports.getCategoryBySlug = async (req, res) => {
     // Get products in this category
     const products = await Product.find({
       category: category._id,
-      isActive: true
+      ...VISIBLE_PRODUCT,
     }).limit(20);
 
     res.json({

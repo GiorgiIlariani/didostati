@@ -186,7 +186,9 @@ exports.loginWithPhone = async (req, res) => {
 
     let user = await User.findOne({ phone });
     if (!user) {
-      const name = req.body.name?.trim() || `მომხმარებელი ${phone.slice(-4)}`;
+      const rawName = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+      // Schema caps name at 100 chars — trim instead of failing with a 500.
+      const name = rawName.slice(0, 100) || `მომხმარებელი ${phone.slice(-4)}`;
       user = await User.create({
         name,
         phone,
@@ -260,19 +262,31 @@ exports.loginWithGoogle = async (req, res) => {
     const email = emailVerified ? (payload.email || '').toLowerCase() : '';
     const name = payload.name || email.split('@')[0] || 'მომხმარებელი';
 
-    let user = await User.findOne({
-      $or: [
-        { googleId },
-        ...(email ? [{ email }] : []),
-      ],
-    });
+    // Prefer an exact googleId match; only fall back to email matching for
+    // linking an existing account.
+    let user = await User.findOne({ googleId }).select('+password');
+    if (!user && email) {
+      user = await User.findOne({ email }).select('+password');
+    }
 
     if (user) {
       if (!user.googleId) {
+        // Email/password registration does not verify the email address, so
+        // an attacker could pre-register the victim's email and later share
+        // the account once the victim signs in with Google. Never auto-link
+        // Google to an account that already has a password.
+        if (user.password) {
+          return res.status(409).json({
+            status: 'error',
+            message:
+              'ამ ელფოსტით ანგარიში პაროლით უკვე არსებობს — შედით ელფოსტით და პაროლით',
+          });
+        }
         user.googleId = googleId;
         user.authProvider = user.authProvider || 'google';
         await user.save();
       }
+      user.password = undefined;
     } else {
       user = await User.create({
         name,

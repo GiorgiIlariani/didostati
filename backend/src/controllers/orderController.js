@@ -18,13 +18,13 @@ exports.getAllOrders = async (req, res) => {
       dateFrom,
       dateTo,
       search,
-      page = 1,
-      limit = 20,
     } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
     const query = {};
-    if (status) {
-      query.status = status;
+    if (status && VALID_ORDER_STATUSES.includes(String(status))) {
+      query.status = String(status);
     }
     if (city) {
       query['shippingAddress.city'] = new RegExp(`^${escapeRegex(String(city).trim())}$`, 'i');
@@ -172,6 +172,40 @@ exports.updateOrderStatus = async (req, res) => {
     if (Object.keys(setFields).length > 0) {
       updateOps.$set = setFields;
     }
+
+    // Stock bookkeeping: createOrder reserved stock for every item, so a
+    // cancellation must give it back, and un-cancelling must reserve it again
+    // (only if there is still enough left).
+    const becomesCancelled =
+      status === 'cancelled' && oldOrder.status !== 'cancelled';
+    const leavesCancelled =
+      status && status !== 'cancelled' && oldOrder.status === 'cancelled';
+
+    const reReserved = [];
+    const releaseReReserved = () =>
+      Promise.all(
+        reReserved.map(({ productId, quantity }) =>
+          Product.updateOne({ _id: productId }, { $inc: { stock: quantity } })
+        )
+      );
+
+    if (leavesCancelled) {
+      for (const item of oldOrder.items) {
+        const product = await Product.findOneAndUpdate(
+          { _id: item.product, stock: { $gte: item.quantity } },
+          { $inc: { stock: -item.quantity } }
+        );
+        if (!product) {
+          await releaseReReserved();
+          return res.status(400).json({
+            status: 'error',
+            message: `„${item.name || 'პროდუქტი'}“ — მარაგი არასაკმარისია შეკვეთის აღდგენისთვის`,
+          });
+        }
+        reReserved.push({ productId: item.product, quantity: item.quantity });
+      }
+    }
+
     if (status && oldOrder.status !== status) {
       updateOps.$push = {
         statusHistory: {
@@ -183,14 +217,30 @@ exports.updateOrderStatus = async (req, res) => {
       };
     }
 
-    const order = await Order.findByIdAndUpdate(orderId, updateOps, {
-      new: true,
-      runValidators: true,
-    })
-      .populate('items.product', 'name images brand')
-      .populate('user', 'name email')
-      .populate('assignedManager', 'name email')
-      .populate('statusHistory.changedBy', 'name email');
+    let order;
+    try {
+      order = await Order.findByIdAndUpdate(orderId, updateOps, {
+        new: true,
+        runValidators: true,
+      })
+        .populate('items.product', 'name images brand')
+        .populate('user', 'name email')
+        .populate('assignedManager', 'name email')
+        .populate('statusHistory.changedBy', 'name email');
+    } catch (updateError) {
+      // Stock was re-reserved above for an un-cancel — give it back if the
+      // order document itself failed to update.
+      await releaseReReserved();
+      throw updateError;
+    }
+
+    if (becomesCancelled) {
+      await Promise.all(
+        oldOrder.items.map((item) =>
+          Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } })
+        )
+      );
+    }
 
     // Create notifications if user exists and status changed
     if (order.user) {
@@ -268,6 +318,7 @@ exports.createOrder = async (req, res) => {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const recentOrderCount = await Order.countDocuments({
       createdAt: { $gte: oneDayAgo },
+      status: { $ne: 'cancelled' },
       $or: [
         { user: req.user._id },
         { 'customer.phone': verifiedPhone },
@@ -421,34 +472,49 @@ exports.createOrder = async (req, res) => {
 
     const totalAmount = subtotal + deliveryFee;
 
+    const orderDoc = {
+      customer: customerInfo,
+      items: orderItems,
+      shippingAddress: {
+        street: shippingAddress.street || '',
+        city: shippingAddress.city,
+        region: shippingAddress.region || '',
+        postalCode: shippingAddress.postalCode || '',
+        country: shippingAddress.country || 'Georgia'
+      },
+      totalAmount,
+      deliveryFee,
+      deliveryType,
+      paymentMethod,
+      paymentStatus: 'pending',
+      status: 'pending',
+      statusHistory: [
+        {
+          status: 'pending',
+          note: 'შეკვეთა შექმნილია',
+          at: new Date(),
+        },
+      ],
+      notes: notes || '',
+      user: req.user._id,
+    };
+
     let order;
     try {
-      order = await Order.create({
-        customer: customerInfo,
-        items: orderItems,
-        shippingAddress: {
-          street: shippingAddress.street || '',
-          city: shippingAddress.city,
-          region: shippingAddress.region || '',
-          postalCode: shippingAddress.postalCode || '',
-          country: shippingAddress.country || 'Georgia'
-        },
-        totalAmount,
-        deliveryFee,
-        deliveryType,
-        paymentMethod,
-        paymentStatus: 'pending',
-        status: 'pending',
-        statusHistory: [
-          {
-            status: 'pending',
-            note: 'შეკვეთა შექმნილია',
-            at: new Date(),
-          },
-        ],
-        notes: notes || '',
-        user: req.user._id,
-      });
+      // orderNumber is random (DID-YYYYMMDD-XXXXXX) with a unique index, so a
+      // collision is possible; retry a few times before giving up.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          order = await Order.create(orderDoc);
+          break;
+        } catch (createError) {
+          const isDuplicateOrderNumber =
+            createError?.code === 11000 &&
+            createError?.keyPattern &&
+            createError.keyPattern.orderNumber;
+          if (!isDuplicateOrderNumber || attempt >= 4) throw createError;
+        }
+      }
     } catch (createError) {
       // Stock was already decremented above — give it back if the order
       // document itself failed to save.
@@ -536,9 +602,12 @@ exports.getOrderById = async (req, res) => {
     // Email fallback only for legacy orders that pre-date the `user` field,
     // and only when the account actually has an email (phone-only accounts
     // must never match orders via an empty/undefined email).
+    // The email fallback must only apply to orders that have no owner at
+    // all — customer.email is free text from the checkout form, so an order
+    // owned by someone else must never be readable via a matching email.
     const hasAccess =
       order.user?.toString() === req.user._id.toString() ||
-      (!!req.user.email && order.customer.email === req.user.email);
+      (!order.user && !!req.user.email && order.customer.email === req.user.email);
 
     if (!hasAccess) {
       return res.status(403).json({
