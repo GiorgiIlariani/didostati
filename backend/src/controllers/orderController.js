@@ -337,78 +337,123 @@ exports.createOrder = async (req, res) => {
     }
     customerInfo.phone = customerPhone;
 
-    // Calculate totals and validate products
+    const deliveryType = ['standard', 'express', 'pickup'].includes(req.body.deliveryType)
+      ? req.body.deliveryType
+      : 'standard';
+    // Never trust the client-sent fee — recompute it server-side from *how*
+    // the cart priced delivery (tariff city or GPS coords). The free-text
+    // shippingAddress.city is only consulted when the client sent neither
+    // (drafts saved before this field existed); it must NOT override GPS
+    // pricing, otherwise a geocoded "ქუთაისი" would jump from ₾5 to ₾200.
+    const hasPricingHint = Boolean(req.body.deliveryCity || req.body.deliveryCoords);
+    const deliveryFee = getDeliveryFee(
+      deliveryType,
+      hasPricingHint
+        ? { city: req.body.deliveryCity, coords: req.body.deliveryCoords }
+        : { city: shippingAddress.city }
+    );
+    if (deliveryFee === null) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'მიწოდების ფასი ვერ დადგინდა — აირჩიეთ ქალაქი სიიდან ან ჩართეთ ლოკაცია',
+      });
+    }
+
+    // Validate products and reserve stock atomically. Each item's decrement
+    // only succeeds if enough stock is still available at that moment, so two
+    // concurrent orders can't both take the last unit (no read-then-write race).
     let subtotal = 0;
     const orderItems = [];
+    const reserved = []; // { productId, quantity } — for rollback on failure
+
+    const releaseReserved = async () => {
+      await Promise.all(
+        reserved.map(({ productId, quantity }) =>
+          Product.updateOne({ _id: productId }, { $inc: { stock: quantity } })
+        )
+      );
+    };
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
-      if (!product || product.isDeleted || !product.isActive) {
-        return res.status(404).json({
-          status: 'error',
-          message: `Product ${item.productId} not found`
-        });
-      }
+      const quantity = Number(item.quantity);
+      const product = await Product.findOneAndUpdate(
+        {
+          _id: item.productId,
+          isDeleted: { $ne: true },
+          isActive: { $ne: false },
+          inStock: { $ne: false },
+          stock: { $gte: quantity },
+        },
+        { $inc: { stock: -quantity } },
+        { new: true }
+      );
 
-      if (!product.inStock || product.stock < item.quantity) {
+      if (!product) {
+        await releaseReserved();
+        // Distinguish "gone" from "not enough left" for a useful message.
+        const existing = await Product.findById(item.productId).select('name isDeleted isActive');
+        if (!existing || existing.isDeleted || !existing.isActive) {
+          return res.status(404).json({
+            status: 'error',
+            message: 'ერთი ან მეტი პროდუქტი აღარ არის ხელმისაწვდომი',
+          });
+        }
         return res.status(400).json({
           status: 'error',
-          message: `Insufficient stock for ${product.name}`
+          message: `„${existing.name}“ — მარაგი არასაკმარისია`,
         });
       }
 
+      reserved.push({ productId: product._id, quantity });
+
       const itemPrice = product.price;
-      const itemSubtotal = itemPrice * item.quantity;
+      const itemSubtotal = itemPrice * quantity;
       subtotal += itemSubtotal;
 
       orderItems.push({
         product: product._id,
         name: product.name,
         price: itemPrice,
-        quantity: item.quantity,
+        quantity,
         subtotal: itemSubtotal
       });
     }
 
-    const deliveryType = ['standard', 'express', 'pickup'].includes(req.body.deliveryType)
-      ? req.body.deliveryType
-      : 'standard';
-    // Never trust the client-sent fee outright — recompute/clamp it server-side.
-    const deliveryFee = getDeliveryFee(deliveryType, shippingAddress.city, req.body.deliveryFee);
     const totalAmount = subtotal + deliveryFee;
 
-    const order = await Order.create({
-      customer: customerInfo,
-      items: orderItems,
-      shippingAddress: {
-        street: shippingAddress.street || '',
-        city: shippingAddress.city,
-        region: shippingAddress.region || '',
-        postalCode: shippingAddress.postalCode || '',
-        country: shippingAddress.country || 'Georgia'
-      },
-      totalAmount,
-      deliveryFee,
-      deliveryType,
-      paymentMethod,
-      paymentStatus: 'pending',
-      status: 'pending',
-      statusHistory: [
-        {
-          status: 'pending',
-          note: 'შეკვეთა შექმნილია',
-          at: new Date(),
+    let order;
+    try {
+      order = await Order.create({
+        customer: customerInfo,
+        items: orderItems,
+        shippingAddress: {
+          street: shippingAddress.street || '',
+          city: shippingAddress.city,
+          region: shippingAddress.region || '',
+          postalCode: shippingAddress.postalCode || '',
+          country: shippingAddress.country || 'Georgia'
         },
-      ],
-      notes: notes || '',
-      ...(req.user && { user: req.user._id })
-    });
-
-    // Update product stock
-    for (const item of orderItems) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.quantity }
+        totalAmount,
+        deliveryFee,
+        deliveryType,
+        paymentMethod,
+        paymentStatus: 'pending',
+        status: 'pending',
+        statusHistory: [
+          {
+            status: 'pending',
+            note: 'შეკვეთა შექმნილია',
+            at: new Date(),
+          },
+        ],
+        notes: notes || '',
+        user: req.user._id,
       });
+    } catch (createError) {
+      // Stock was already decremented above — give it back if the order
+      // document itself failed to save.
+      await releaseReserved();
+      throw createError;
     }
 
     // Populate order for response
@@ -449,13 +494,13 @@ exports.getUserOrders = async (req, res) => {
       });
     }
 
-    // For now, match by email (since user field might not be set on old orders)
-    const orders = await Order.find({
-      $or: [
-        { 'customer.email': req.user.email },
-        { user: req.user._id }
-      ]
-    })
+    // Match by user id; email fallback only for legacy orders without `user`,
+    // and only when the account has an email (phone-only accounts don't).
+    const ownerConditions = [{ user: req.user._id }];
+    if (req.user.email) {
+      ownerConditions.push({ user: { $exists: false }, 'customer.email': req.user.email });
+    }
+    const orders = await Order.find({ $or: ownerConditions })
       .populate('items.product', 'name images brand')
       .sort('-createdAt')
       .exec();
@@ -487,18 +532,19 @@ exports.getOrderById = async (req, res) => {
       });
     }
 
-    // Check if user has access (if logged in)
-    if (req.user) {
-      const hasAccess = 
-        order.user?.toString() === req.user._id.toString() ||
-        order.customer.email === req.user.email;
-      
-      if (!hasAccess) {
-        return res.status(403).json({
-          status: 'error',
-          message: 'Access denied'
-        });
-      }
+    // Ownership check — route is behind `protect`, so req.user always exists.
+    // Email fallback only for legacy orders that pre-date the `user` field,
+    // and only when the account actually has an email (phone-only accounts
+    // must never match orders via an empty/undefined email).
+    const hasAccess =
+      order.user?.toString() === req.user._id.toString() ||
+      (!!req.user.email && order.customer.email === req.user.email);
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'ამ შეკვეთაზე წვდომა არ გაქვთ'
+      });
     }
 
     res.json(

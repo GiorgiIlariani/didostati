@@ -238,6 +238,8 @@ export const orderAPI = {
     paymentMethod: 'cash' | 'card' | 'bank_transfer';
     deliveryFee?: number;
     deliveryType?: 'standard' | 'express' | 'pickup';
+    deliveryCity?: string;
+    deliveryCoords?: { lat: number; lng: number };
     phone?: string;
     name?: string;
     email?: string;

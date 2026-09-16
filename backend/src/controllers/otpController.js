@@ -18,9 +18,13 @@ const MAX_OTP_PER_DAY = 5;
  * Atomically increments (and checks) the daily OTP-send counter for a
  * phone number. Returns true if the send is still within the daily limit.
  */
-async function checkAndIncrementDailyOtpLimit(phone) {
+function dailyWindowKey(phone) {
   const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-  const windowKey = `${phone}:${day}`;
+  return `${phone}:${day}`;
+}
+
+async function checkAndIncrementDailyOtpLimit(phone) {
+  const windowKey = dailyWindowKey(phone);
   const expiresAt = new Date(Date.now() + 26 * 60 * 60 * 1000); // buffer past day boundary
   const doc = await OtpDailyLimit.findOneAndUpdate(
     { windowKey },
@@ -28,6 +32,23 @@ async function checkAndIncrementDailyOtpLimit(phone) {
     { upsert: true, new: true }
   );
   return doc.count <= MAX_OTP_PER_DAY;
+}
+
+/**
+ * Gives back one daily-limit slot when the send failed after the counter was
+ * already incremented (SMS provider error, DB error). Otherwise a flaky
+ * provider could burn all of a user's daily attempts without them ever
+ * receiving a code.
+ */
+async function refundDailyOtpLimit(phone) {
+  try {
+    await OtpDailyLimit.updateOne(
+      { windowKey: dailyWindowKey(phone), count: { $gt: 0 } },
+      { $inc: { count: -1 } }
+    );
+  } catch (err) {
+    console.error('refundDailyOtpLimit error:', err);
+  }
 }
 
 function normalizePhone(raw) {
@@ -90,20 +111,35 @@ exports.sendOtp = async (req, res) => {
     const code = generateCode();
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-    await OtpSession.create({
-      phone,
-      codeHash: hashCode(code),
-      purpose,
-      expiresAt,
-      attempts: 0,
-      verified: false,
-    });
-
     const message =
       purpose === 'login'
         ? `დიდოსტატი: შესვლის კოდია ${code}. მოქმედებს 5 წუთი.`
         : `დიდოსტატი: თქვენი დადასტურების კოდია ${code}. მოქმედებს 5 წუთი.`;
-    await sendSms(phone, message);
+
+    let session;
+    try {
+      session = await OtpSession.create({
+        phone,
+        codeHash: hashCode(code),
+        purpose,
+        expiresAt,
+        attempts: 0,
+        verified: false,
+      });
+      await sendSms(phone, message);
+    } catch (sendError) {
+      // Don't leave a session the user can never receive the code for, and
+      // give the daily slot back — the user did not get an SMS.
+      if (session) {
+        await OtpSession.deleteOne({ _id: session._id }).catch(() => {});
+      }
+      await refundDailyOtpLimit(phone);
+      console.error('sendOtp delivery error:', sendError);
+      return res.status(502).json({
+        status: 'error',
+        message: 'SMS-ის გაგზავნა ვერ მოხერხდა. სცადეთ ხელახლა რამდენიმე წამში.',
+      });
+    }
 
     const payload = {
       status: 'success',

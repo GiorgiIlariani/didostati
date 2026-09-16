@@ -2,6 +2,12 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env') }
 const mongoose = require('mongoose');
 const Advertisement = require('../models/Advertisement');
 
+// Safety guard: this wipes ALL hero slides/ads. Usage: npm run delete-ads -- --confirm
+if (!process.argv.includes('--confirm')) {
+  console.error('❌ This deletes ALL advertisements. Re-run with:  npm run delete-ads -- --confirm');
+  process.exit(2);
+}
+
 async function deleteAllAdvertisements() {
   try {
     console.log('🔗 Connecting to MongoDB...');

@@ -2,6 +2,12 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../.env') }
 const mongoose = require('mongoose');
 const Product = require('../models/Product');
 
+// Safety guard: this wipes ALL products. Usage: npm run delete-products -- --confirm
+if (!process.argv.includes('--confirm')) {
+  console.error('❌ This deletes ALL products. Re-run with:  npm run delete-products -- --confirm');
+  process.exit(2);
+}
+
 async function deleteAllProducts() {
   try {
     console.log('🔗 Connecting to MongoDB...');

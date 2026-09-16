@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
-const { protect, protectOptional, restrictTo } = require('../middleware/authMiddleware');
+const { protect, restrictTo } = require('../middleware/authMiddleware');
 const { orderLookupLimiter } = require('../middleware/rateLimit');
 const { body } = require('express-validator');
 const { handleValidationErrors } = require('../validators/validationMiddleware');
@@ -12,12 +12,23 @@ const createOrderValidator = [
     .isArray({ min: 1 }).withMessage('Order must contain at least one item'),
   body('items.*.productId')
     .trim()
-    .notEmpty().withMessage('Product ID is required for each item'),
+    .isMongoId().withMessage('Invalid product ID'),
   body('items.*.quantity')
-    .isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
+    .isInt({ min: 1, max: 1000 }).withMessage('Quantity must be at least 1'),
   body('shippingAddress.city')
     .trim()
     .notEmpty().withMessage('Shipping city is required'),
+  // How the cart priced delivery: tariff city name and/or GPS coordinates.
+  body('deliveryCity')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 100 }).withMessage('Delivery city is too long'),
+  body('deliveryCoords.lat')
+    .optional()
+    .isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
+  body('deliveryCoords.lng')
+    .optional()
+    .isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude'),
   body('paymentMethod')
     .isIn(['cash', 'card', 'bank_transfer']).withMessage('Invalid payment method'),
   body('customer.name')
@@ -51,9 +62,9 @@ router.get('/', protect, orderController.getUserOrders);
 // Create new order (auth required — guests cannot order)
 router.post('/', protect, createOrderValidator, handleValidationErrors, orderController.createOrder);
 
-// Get single order by ID (optional auth - check access).
-// Rate-limited: reachable by guests with just the order ID, so it must not
-// be brute-forceable to enumerate other customers' orders.
-router.get('/:id', orderLookupLimiter, protectOptional, orderController.getOrderById);
+// Get single order by ID (auth required — only the owner may view it).
+// Orders can only be created by logged-in users, so there is no guest case.
+// Rate-limited to slow down ID enumeration attempts even by logged-in users.
+router.get('/:id', orderLookupLimiter, protect, orderController.getOrderById);
 
 module.exports = router;

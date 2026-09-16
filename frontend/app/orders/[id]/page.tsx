@@ -122,13 +122,10 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    /*
-     * RESTORE_ORDER_DETAIL_REQUIRES_LOGIN:
-     * if (!user) {
-     *   router.replace(`/login?redirect=/orders/${params.id}`);
-     *   return;
-     * }
-     */
+    if (!user) {
+      router.replace(`/login?redirect=/orders/${params.id}`);
+      return;
+    }
 
     async function fetchOrder() {
       try {
@@ -145,12 +142,9 @@ export default function OrderDetailPage() {
     }
 
     fetchOrder();
-  }, [params.id, authLoading, router]);
-  // RESTORE_ORDER_DETAIL_REQUIRES_LOGIN: add `user` to effect deps when re-enabling redirect above.
-  // After fetch, you may also restore:
-  // if (!user) return null;
+  }, [params.id, authLoading, user, router]);
 
-  if (authLoading || loading) {
+  if (authLoading || loading || !user) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
@@ -168,12 +162,11 @@ export default function OrderDetailPage() {
           </h2>
           <p className="text-slate-400 mb-6">{error || 'ასეთი შეკვეთა არ არსებობს'}</p>
           <Link
-            href={user ? "/orders" : "/products"}
-            // RESTORE_ORDER_DETAIL_REQUIRES_LOGIN: always href="/orders" + label "შეკვეთების სია" when login is required
+            href="/orders"
             className="inline-flex items-center gap-2 px-6 py-3 bg-linear-to-r from-orange-500 to-yellow-500 text-white font-semibold rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all"
           >
             <ArrowLeft className="w-4 h-4" />
-            {user ? "შეკვეთების სია" : "პროდუქტებზე"}
+            შეკვეთების სია
           </Link>
         </div>
       </div>
@@ -184,11 +177,11 @@ export default function OrderDetailPage() {
     <div className="min-h-screen bg-slate-900 py-8 ds-fade-in">
       <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
         <Link
-          href={user ? "/orders" : "/products"}
+          href="/orders"
           className="inline-flex items-center gap-2 text-slate-400 hover:text-orange-400 transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          {user ? "უკან შეკვეთებზე" : "უკან პროდუქტებზე"}
+          უკან შეკვეთებზე
         </Link>
 
         {/* Order Header */}

@@ -105,6 +105,12 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Query patterns: "my orders" (user + newest first), admin list filtered by
+// status, daily per-user/per-phone order limit, phone lookup in admin search.
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ 'customer.phone': 1, createdAt: -1 });
+
 // Generate order number: DID-YYYYMMDD-XXXXXX
 orderSchema.pre('validate', function(next) {
   if (!this.orderNumber) {

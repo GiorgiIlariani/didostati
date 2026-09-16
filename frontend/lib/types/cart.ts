@@ -21,6 +21,10 @@ export interface Cart {
   deliveryDistanceKm?: number;
   /** City/place name (from geocode or manually selected) */
   deliveryLocationName?: string;
+  /** Tariff city the fee was priced from (only when a listed city was selected) */
+  deliveryPricingCity?: string;
+  /** GPS coordinates the fee was priced from (only when distance-based) */
+  deliveryCoords?: { lat: number; lng: number };
   /** True when user can proceed to checkout (pickup or fee known) */
   deliveryFeeResolved: boolean;
 }

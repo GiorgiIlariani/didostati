@@ -14,6 +14,10 @@ export type CheckoutDraft = {
   };
   deliveryFee: number;
   deliveryType: "standard" | "express" | "pickup";
+  /** Tariff city the cart priced from — backend recomputes the fee from this */
+  deliveryCity?: string;
+  /** GPS coords the cart priced from — backend recomputes the fee from this */
+  deliveryCoords?: { lat: number; lng: number };
   phone: string;
   name: string;
   email?: string;

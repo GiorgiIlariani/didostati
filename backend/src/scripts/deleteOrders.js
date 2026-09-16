@@ -7,6 +7,14 @@ const Product = require("../models/Product");
 const ProductView = require("../models/ProductView");
 const Notification = require("../models/Notification");
 
+// Safety guard: this wipes ALL orders. Refuse to run without an explicit flag
+// so `npm run delete-orders` against the production DB can't happen by accident.
+// Usage: npm run delete-orders -- --confirm
+if (!process.argv.includes("--confirm")) {
+  console.error("❌ This deletes ALL orders. Re-run with:  npm run delete-orders -- --confirm");
+  process.exit(2);
+}
+
 const ORDER_NOTIFICATION_TYPES = [
   "order_pending",
   "order_confirmed",

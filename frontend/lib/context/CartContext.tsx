@@ -199,6 +199,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     let baseFee = 0;
     let deliveryDistanceKm: number | undefined;
     let deliveryLocationName: string | undefined;
+    let deliveryPricingCity: string | undefined;
+    let deliveryCoords: { lat: number; lng: number } | undefined;
     let deliveryFeeResolved = false;
 
     if (deliveryType === "pickup") {
@@ -211,11 +213,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (cityFee != null) {
         baseFee = cityFee;
         deliveryLocationName = deliveryCity;
+        deliveryPricingCity = deliveryCity;
         deliveryFeeResolved = true;
-      } else if (coordsFee) {
+      } else if (coordsFee && userCoords) {
         baseFee = coordsFee.fee;
         deliveryDistanceKm = coordsFee.distanceKm;
         deliveryLocationName = userLocationName ?? undefined;
+        deliveryCoords = userCoords;
         deliveryFeeResolved = true;
       }
       if (deliveryType === "express" && deliveryFeeResolved) {
@@ -235,6 +239,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       deliveryType,
       deliveryDistanceKm,
       deliveryLocationName,
+      deliveryPricingCity,
+      deliveryCoords,
       deliveryFeeResolved,
     };
   }, [items, userCoords, userLocationName, deliveryType, deliveryCity]);

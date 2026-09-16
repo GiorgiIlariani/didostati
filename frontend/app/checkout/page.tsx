@@ -146,6 +146,8 @@ export default function CheckoutPage() {
         },
         deliveryFee: cart.deliveryFee,
         deliveryType: cart.deliveryType,
+        deliveryCity: cart.deliveryPricingCity,
+        deliveryCoords: cart.deliveryCoords,
         phone: formData.phone.trim(),
         name: formData.name.trim(),
         // Omit rather than send "" — express-validator's optional() treats

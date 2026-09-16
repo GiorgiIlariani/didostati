@@ -1,25 +1,26 @@
 /**
- * Server-side delivery fee guard.
+ * Server-side delivery fee computation.
  *
  * The frontend computes the fee either from a fixed city tariff table or
  * from the customer's GPS distance to the store (see
- * frontend/lib/utils/delivery.ts). The backend doesn't receive GPS
- * coordinates, so it can't recompute a GPS-based fee exactly — but it must
- * not blindly trust a client-supplied number, or a tampered request could
- * set deliveryFee to 0 (or any value) and steal delivery revenue.
+ * frontend/lib/utils/delivery.ts). The backend never trusts the client's
+ * fee number — a tampered request could set deliveryFee to 0 and steal
+ * delivery revenue. Instead the client tells us *how* it priced delivery:
  *
- * Strategy: for known cities, force the exact tariff (ignore the client
- * value entirely). For pickup, force 0. Otherwise (GPS-based fee for an
- * unlisted city), clamp the client value to the same [MIN, MAX] range the
- * frontend itself enforces. In every case, "express" adds the same fixed
- * surcharge the frontend adds on top of the base fee.
+ *   - pickup                    → 0
+ *   - tariff city (deliveryCity) → fixed tariff from CITY_TARIFFS
+ *   - GPS (deliveryCoords)       → Haversine distance from the store,
+ *                                  same formula/constants as the frontend
+ *
+ * If neither a known tariff city nor valid coordinates are provided, the fee
+ * cannot be determined and `getDeliveryFee` returns null so the caller can
+ * reject the order instead of guessing.
  */
 
 // Keep in sync with frontend/lib/utils/delivery.ts CITY_TARIFFS.
 // Frontend sends the Georgian display name (e.g. "თბილისი") as
-// shippingAddress.city, so both the Georgian name and the English id must
-// map to the same fee or the lookup below silently falls through to the
-// GPS-based clamp range and undercharges known cities.
+// deliveryCity, so both the Georgian name and the English id must map to
+// the same fee.
 const CITY_TARIFFS = {
   zugdidi: 280,
   ზუგდიდი: 280,
@@ -43,10 +44,21 @@ const CITY_TARIFFS = {
   რუსთავი: 150,
 };
 
+// Keep in sync with frontend/lib/utils/delivery.ts (GEL_PER_KM, MIN/MAX,
+// EXPRESS_FEE_EXTRA, DELIVERY_BASE). Store coordinates can be overridden via
+// env to match NEXT_PUBLIC_DELIVERY_BASE_LAT/LNG on the frontend.
+const GEL_PER_KM = 0.2;
 const MIN_DELIVERY_FEE = 2;
 const MAX_DELIVERY_FEE = 25;
-// Keep in sync with frontend/lib/utils/delivery.ts EXPRESS_FEE_EXTRA.
 const EXPRESS_FEE_EXTRA = 5;
+const DELIVERY_BASE = {
+  lat: parseFloat(process.env.DELIVERY_BASE_LAT || "41.9842"),
+  lng: parseFloat(process.env.DELIVERY_BASE_LNG || "44.1158"),
+};
+
+// Georgia bounding box — anything outside is not a deliverable address and
+// would only be sent by a tampered client trying to hit the min fee.
+const GEORGIA_BOUNDS = { minLat: 41.0, maxLat: 43.6, minLng: 39.9, maxLng: 46.8 };
 
 function normalizeCity(name) {
   return String(name || "")
@@ -62,30 +74,72 @@ function getKnownCityFee(cityName) {
     : null;
 }
 
+/** Haversine distance in km — identical to the frontend implementation. */
+function getDistanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function getDeliveryFeeFromDistanceKm(km) {
+  const fee = Math.max(MIN_DELIVERY_FEE, Math.min(MAX_DELIVERY_FEE, km * GEL_PER_KM));
+  return Math.round(fee * 100) / 100;
+}
+
+function parseCoords(coords) {
+  if (!coords || typeof coords !== "object") return null;
+  const lat = Number(coords.lat);
+  const lng = Number(coords.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (
+    lat < GEORGIA_BOUNDS.minLat ||
+    lat > GEORGIA_BOUNDS.maxLat ||
+    lng < GEORGIA_BOUNDS.minLng ||
+    lng > GEORGIA_BOUNDS.maxLng
+  ) {
+    return null;
+  }
+  return { lat, lng };
+}
+
 /**
- * Returns the delivery fee to charge, validated against server-known rules.
- * `clientFee` is only trusted (and only within a bounded range) when the
- * city isn't one of our known fixed-tariff cities.
+ * Returns the delivery fee to charge, or null if it cannot be determined.
+ *
+ * @param {'standard'|'express'|'pickup'} deliveryType
+ * @param {{ city?: string, coords?: { lat: number, lng: number } }} pricing
+ *   `city`   — tariff city chosen in the cart (cart.deliveryCity)
+ *   `coords` — customer GPS position when the cart priced by distance
  */
-function getDeliveryFee(deliveryType, cityName, clientFee) {
+function getDeliveryFee(deliveryType, pricing = {}) {
   if (deliveryType === "pickup") return 0;
 
   const expressExtra = deliveryType === "express" ? EXPRESS_FEE_EXTRA : 0;
 
-  const knownFee = getKnownCityFee(cityName);
+  const knownFee = getKnownCityFee(pricing.city);
   if (knownFee !== null) return knownFee + expressExtra;
 
-  const fee = Number(clientFee);
-  const minFee = MIN_DELIVERY_FEE + expressExtra;
-  const maxFee = MAX_DELIVERY_FEE + expressExtra;
-  if (!Number.isFinite(fee) || fee < 0) return minFee;
-  return Math.min(maxFee, Math.max(minFee, fee));
+  const coords = parseCoords(pricing.coords);
+  if (coords) {
+    const km = getDistanceKm(DELIVERY_BASE.lat, DELIVERY_BASE.lng, coords.lat, coords.lng);
+    return getDeliveryFeeFromDistanceKm(km) + expressExtra;
+  }
+
+  return null;
 }
 
 module.exports = {
   getDeliveryFee,
+  getDistanceKm,
   CITY_TARIFFS,
+  GEL_PER_KM,
   MIN_DELIVERY_FEE,
   MAX_DELIVERY_FEE,
   EXPRESS_FEE_EXTRA,
+  DELIVERY_BASE,
 };
